@@ -736,6 +736,7 @@ const AGENTS = {
   'a.raimondi@dynatech.it':   { nome: 'Andrea',     cognome: 'Raimondi',    zona: '—'       },
   // ── Email Gmail personali (aggiungere qui) ────────────────────
   // 'nome.cognome@gmail.com': { nome: 'Nome', cognome: 'Cognome', zona: 'Zona' },
+  'info.stservice@gmail.com':       { nome: 'Sergio',    cognome: 'Toccaceli', zona: 'Centro' },
   'giampaolo.servodio@gmail.com':  { nome: 'Giampaolo', cognome: 'Servodio', zona: '—'      },
   'raimondiandrea9@gmail.com':     { nome: 'Andrea',    cognome: 'Raimondi', zona: '—'      },
   'damianifrancesco25@gmail.com':  { nome: 'Francesco', cognome: 'Damiani',  zona: 'Centro' },
@@ -1402,9 +1403,4 @@ function showToast(msg, type = '') {
   el.className   = `toast ${type}`;
   el.classList.add('show');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
-}
-</script>
-
-</body>
-</html>
+ 
