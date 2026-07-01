@@ -147,21 +147,21 @@ function handleRead(email, meseAnno) {
   var lastRow = sheet.getLastRow();
   if (lastRow < FIRST_DATA_ROW) return jsonOk({ values: [] });
 
+  var tz = ss.getSpreadsheetTimeZone();
   var values = sheet.getRange(FIRST_DATA_ROW, 1, lastRow - FIRST_DATA_ROW + 1, N_COL).getValues();
 
-  // Filtra per email (col F = 5) e mese ricavato dalla Data spesa (col G = 6)
+  // Filtra solo per email (col F = 5): SPESE contiene già il mese corrente.
   var filtered = values.filter(function(r) {
     if (r[0] === '' || r[0] === null) return false;
-    var rowEmail = (r[5] || '').toString().toLowerCase().trim();
-    return rowEmail === email && (!meseAnno || monthFromCell_(r[6]) === meseAnno);
+    return (r[5] || '').toString().toLowerCase().trim() === email;
   });
 
-  // Converti Date/valori in stringhe (coerenza con l'HTML)
+  // Converti Date/valori in stringhe (coerenza con l'HTML), col fuso del foglio
   filtered = filtered.map(function(r) {
     return r.map(function(cell, i) {
       if (cell instanceof Date) {
         return (i === 6)
-          ? Utilities.formatDate(cell, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+          ? Utilities.formatDate(cell, tz, 'yyyy-MM-dd')
           : cell.toISOString();
       }
       return cell === null || cell === undefined ? '' : cell.toString();
@@ -194,7 +194,8 @@ function aggiornaRiepilogoMensile(ss) {
   var map = {};
   data.forEach(function(r) {
     if (r[0] === '' || r[0] === null) return;
-    if (monthFromCell_(r[6]) !== meseAnno) return;
+    // SPESE contiene già solo il mese corrente (viene azzerato ogni mese):
+    // nessun filtro sul mese, così evitiamo problemi di fuso/formato della data.
     var key = normName_((r[2] || '') + ' ' + (r[3] || ''));
     if (!map[key]) map[key] = { appr: 0, attesa: 0, rifiut: 0, auth: 0 };
     var imp = parseFloat(r[9]) || 0;
