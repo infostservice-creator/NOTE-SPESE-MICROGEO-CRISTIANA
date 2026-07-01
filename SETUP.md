@@ -14,7 +14,15 @@ App per la gestione note spese: **16 agenti** inseriscono le spese da web,
 |-------------------|--------------------|---------------------------------------------------|
 | Frontend agenti   | `index.html`       | Login Google, inserimento spese, "Le mie spese"   |
 | Backend           | `spese-agenti.gs`  | Web App: `append` / `read`, riepilogo, azzeramento |
-| Database          | Google Sheet       | Fogli `Spese`, `Riepilogo Mensile`, `Archivio`    |
+| Database          | Google Sheet       | Fogli `SPESE`, `Riepilogo Mensile`, `STORICO ANNUALE` |
+
+### I fogli del database
+
+- **`SPESE`** — spese del **mese corrente**. Ogni nuova spesa viene scritta qui.
+  Cristiana lo svuota a fine mese con "Azzera spese mensili".
+- **`STORICO ANNUALE`** — archivio **permanente**: ogni spesa ci finisce sempre
+  (scrittura doppia in `append`). Non viene mai azzerato dall'app.
+- **`Riepilogo Mensile`** — auto-generato: totali per agente del mese corrente.
 
 ## Schema colonne — foglio `Spese` (A→M)
 
@@ -49,8 +57,10 @@ Identico in `index.html` (`submitExpense`) e in `spese-agenti.gs` (`HEADERS`/`CO
    rigenerato automaticamente a ogni nuova spesa e dal menu.
 
 3. **Manca "Azzera spese mensili"** — voce di menu **💼 Note Spese → 🧹 Azzera
-   spese mensili** (solo Cristiana, dal foglio). Con conferma, **archivia** le
-   spese nel foglio `Archivio` e poi ripulisce `Spese` mantenendo l'intestazione.
+   spese mensili** (solo Cristiana, dal foglio). Con conferma, verifica che ogni
+   riga sia già presente in `STORICO ANNUALE` (nessuna perdita dati) e poi
+   svuota `SPESE` mantenendo l'intestazione.
 
 > L'azzeramento è volutamente **lato foglio** (non nell'app agenti): gli agenti
 > non devono poter cancellare le spese di tutti. Cristiana lo usa dal menu.
+> Lo `STORICO ANNUALE` non viene toccato: resta l'archivio completo dell'anno.

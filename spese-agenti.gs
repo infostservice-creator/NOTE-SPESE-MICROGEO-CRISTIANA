@@ -1,204 +1,255 @@
-/*───────────────────────────────────────────────────────────────────────────
-  NOTE SPESE — Microgeo S.r.l. & Dynatech S.r.l.
-  Backend Google Apps Script Web App
+// ================================================================
+//  NOTE SPESE — Microgeo S.r.l. & Dynatech S.r.l.
+//  Google Apps Script — Backend sicuro per Google Sheets
+//  Da deployare come Web App:
+//    - Esegui come: Me (proprietario del foglio)
+//    - Chi può accedere: Chiunque
+//
+//  Fogli usati:
+//    SPESE            → spese del mese corrente (viene azzerato ogni mese)
+//    STORICO ANNUALE  → archivio permanente (ogni spesa ci finisce sempre)
+//    Riepilogo Mensile→ totali per agente del mese corrente (auto-generato)
+//
+//  Fix inclusi:
+//    1) appendRow scriveva in posizioni sbagliate → getFirstEmptyDataRow()
+//    2) "Riepilogo Mensile" vuoto                 → aggiornaRiepilogoMensile()
+//    3) Manca "Azzera spese mensili" per Cristiana → menu onOpen() + azzeraSpeseMensili()
+// ================================================================
 
-  Foglio Google:  1sSEKcElDBML4QJfl1yEVC1YCptBbogqMDlJ-5ZmsPQI
+const SHEET_ID        = '1sSEKcElDBML4QJfl1yEVC1YCptBbogqMDlJ-5ZmsPQI';
+const SHEET_SPESE     = 'SPESE';
+const SHEET_STORICO   = 'STORICO ANNUALE';
+const SHEET_RIEPILOGO = 'Riepilogo Mensile';
 
-  DEPLOY (Web App):
-    • Esegui come:        Me (proprietario del foglio)
-    • Chi può accedere:   Chiunque
-    Copiare l'URL /exec risultante in CONFIG.SCRIPT_URL dentro index.html.
+// Numero di colonne dati (A-M)
+const N_COL = 13;
 
-  Struttura foglio "Spese" (una riga per spesa) — colonne A→M:
-    A  ID          F  Email       K  Note
-    B  Timestamp   G  DataSpesa   L  Stato
-    C  Nome        H  Tipo        M  MeseAnno (MM-YYYY)
-    D  Cognome     I  Km
-    E  Zona        J  Importo
-
-  Questo file risolve i tre problemi noti:
-    1) appendRow scriveva in posizioni sbagliate  → getFirstEmptyDataRow()
-    2) "Riepilogo Mensile" vuoto                   → aggiornaRiepilogoMensile()
-    3) Manca "Azzera spese mensili" per Cristiana  → menu onOpen() + azzeraSpeseMensili()
-───────────────────────────────────────────────────────────────────────────*/
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  CONFIGURAZIONE
-// ═══════════════════════════════════════════════════════════════════════════
-const CONFIG = {
-  SHEET_ID:      '1sSEKcElDBML4QJfl1yEVC1YCptBbogqMDlJ-5ZmsPQI',
-  TAB_SPESE:     'Spese',              // foglio dati principale
-  TAB_RIEPILOGO: 'Riepilogo Mensile',  // foglio riepilogo per agente
-  TAB_ARCHIVIO:  'Archivio',           // dove finiscono le spese azzerate
-};
-
-// Intestazioni colonne A→M del foglio "Spese"
-const HEADERS = [
-  'ID', 'Timestamp', 'Nome', 'Cognome', 'Zona', 'Email',
-  'DataSpesa', 'Tipo', 'Km', 'Importo', 'Note', 'Stato', 'MeseAnno',
+// Lista email autorizzate (aggiornare quando cambiano gli agenti)
+const ALLOWED_EMAILS = [
+  // Microgeo
+  'd.battaglia@microgeo.it',
+  'a.carraro@microgeo.it',
+  'c.ferrara@microgeo.it',
+  'm.friggi@microgeo.it',
+  'd.guidotti@microgeo.it',
+  'i.racu@microgeo.it',
+  's.solda@microgeo.it',
+  'a.deamicis@microgeo.it',
+  'm.costantino@microgeo.it',
+  'f.conti@microgeo.it',
+  'g.palmer@microgeo.it',
+  'g.russo@microgeo.it',
+  // Dynatech
+  'f.damiani@dynatech.it',
+  's.toccaceli@dynatech.it',
+  'g.servodio@dynatech.it',
+  'a.raimondi@dynatech.it',
+  // Gmail personali (test / backup)
+  'info.stservice@gmail.com',
+  'serradiosurf@gmail.com',
+  'giampaolo.servodio@gmail.com',
+  'raimondiandrea9@gmail.com',
+  'damianifrancesco25@gmail.com',
 ];
 
-// Indici di colonna (0-based) — devono restare allineati a index.html
-const COL = {
-  ID: 0, TIMESTAMP: 1, NOME: 2, COGNOME: 3, ZONA: 4, EMAIL: 5,
-  DATA: 6, TIPO: 7, KM: 8, IMPORTO: 9, NOTE: 10, STATO: 11, MESE: 12,
-};
+// ── Risposta JSON ────────────────────────────────────────────────
+function jsonOk(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
+function jsonError(msg, code) {
+  return ContentService
+    .createTextOutput(JSON.stringify({ error: msg, code: code || 400 }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  ENDPOINT WEB APP
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Entry point POST ─────────────────────────────────────────────
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents || '{}');
-    const action = body.action;
+    var payload = JSON.parse(e.postData.contents);
+    var email   = (payload.email || '').toLowerCase().trim();
 
-    switch (action) {
-      case 'append': return json_(handleAppend_(body));
-      case 'read':   return json_(handleRead_(body));
-      default:       return json_({ error: 'Azione non riconosciuta: ' + action });
+    // Sicurezza: verifica che l'email sia nella lista autorizzata
+    if (ALLOWED_EMAILS.indexOf(email) === -1) {
+      return jsonError('Email non autorizzata: ' + email, 403);
     }
+
+    var action = payload.action;
+
+    if (action === 'append') {
+      return handleAppend(payload);
+    }
+
+    if (action === 'read') {
+      return handleRead(email, payload.meseAnno);
+    }
+
+    return jsonError('Azione non riconosciuta: ' + action);
+
   } catch (err) {
-    return json_({ error: String(err && err.message ? err.message : err) });
+    return jsonError('Errore server: ' + err.toString(), 500);
   }
 }
 
-// Health-check nel browser
-function doGet() {
-  return json_({ ok: true, service: 'Note Spese Microgeo/Dynatech', ts: new Date().toISOString() });
+// ── GET di controllo (per verificare che lo script sia attivo) ──
+function doGet(e) {
+  return jsonOk({ status: 'ok', version: '2.0' });
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  AZIONE: APPEND  —  scrive una nuova spesa nella prima riga libera
-// ═══════════════════════════════════════════════════════════════════════════
-function handleAppend_(body) {
-  const row = body.row;
-  if (!Array.isArray(row) || row.length < HEADERS.length) {
-    return { error: 'Riga non valida' };
+// ================================================================
+//  APPEND — scrive una riga su SPESE e STORICO ANNUALE
+//  Struttura row (colonne A-M):
+//  [ID, Timestamp, Nome, Cognome, Zona, Email, DataSpesa, Tipo, Km, Importo, Note, Stato, MeseAnno]
+// ================================================================
+function handleAppend(payload) {
+  var row = payload.row;
+  if (!row || row.length < N_COL) {
+    return jsonError('Riga non valida', 400);
   }
+  row = row.slice(0, N_COL);
 
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000); // evita scritture concorrenti su righe sovrapposte
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000); // evita che invii simultanei finiscano sulla stessa riga
   try {
-    const sheet = getSpeseSheet_();
-    const targetRow = getFirstEmptyDataRow(sheet);
-    sheet.getRange(targetRow, 1, 1, HEADERS.length).setValues([row.slice(0, HEADERS.length)]);
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+
+    // Foglio mese corrente
+    var sheetSpese = ss.getSheetByName(SHEET_SPESE);
+    if (!sheetSpese) return jsonError('Foglio "' + SHEET_SPESE + '" non trovato', 404);
+    writeRow_(sheetSpese, row);
+
+    // Archivio annuale
+    var sheetStorico = ss.getSheetByName(SHEET_STORICO);
+    if (sheetStorico) writeRow_(sheetStorico, row);
+
     SpreadsheetApp.flush();
 
-    // Tiene il riepilogo sempre aggiornato dopo ogni inserimento
-    try { aggiornaRiepilogoMensile(); } catch (_) {}
+    // Tiene il riepilogo sempre aggiornato
+    try { aggiornaRiepilogoMensile(); } catch (e2) {}
 
-    return { ok: true, row: targetRow };
+    return jsonOk({ success: true, id: row[0] });
   } finally {
     lock.releaseLock();
   }
 }
 
+// Scrive la riga nella prima riga dati realmente vuota
+function writeRow_(sheet, row) {
+  var r = getFirstEmptyDataRow(sheet);
+  sheet.getRange(r, 1, 1, row.length).setValues([row]);
+}
+
 /*
-  FIX del bug appendRow: getLastRow()/appendRow() calcolano l'ultima riga in base
+  FIX del bug appendRow: appendRow()/getLastRow() calcolano l'ultima riga in base
   a QUALSIASI colonna con contenuto (formule, celle residue, ecc.), quindi possono
   scrivere in posizioni sbagliate. Qui cerchiamo la prima riga in cui la colonna A
-  (ID) è vuota, saltando l'intestazione.
+  (ID) è vuota, saltando l'intestazione (riga 1).
 */
 function getFirstEmptyDataRow(sheet) {
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 1) return 2; // solo intestazione da creare / foglio nuovo
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 1) return 2; // foglio vuoto: scrive sotto l'eventuale intestazione
 
-  const ids = sheet.getRange(1, COL.ID + 1, lastRow, 1).getValues();
-  for (let i = 1; i < ids.length; i++) {        // i=1 → salta la riga intestazione
-    const v = ids[i][0];
-    if (v === '' || v === null) return i + 1;   // riga 1-based
+  var ids = sheet.getRange(1, 1, lastRow, 1).getValues();
+  for (var i = 1; i < ids.length; i++) {      // i=1 → salta l'intestazione
+    if (ids[i][0] === '' || ids[i][0] === null) return i + 1;
   }
   return lastRow + 1;
 }
 
+// ================================================================
+//  READ — spese di un agente per il mese corrente
+// ================================================================
+function handleRead(email, meseAnno) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName(SHEET_SPESE);
+  if (!sheet) return jsonError('Foglio "' + SHEET_SPESE + '" non trovato', 404);
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  AZIONE: READ  —  restituisce le righe dati (opzionalmente filtrate per mese)
-// ═══════════════════════════════════════════════════════════════════════════
-function handleRead_(body) {
-  const sheet = getSpeseSheet_();
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return { values: [] };
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return jsonOk({ values: [] });
 
-  const all = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  var values = sheet.getRange(2, 1, lastRow - 1, N_COL).getValues();
 
-  // Solo righe reali (con ID) — scarta righe vuote intermedie
-  let values = all.filter(r => r[COL.ID] !== '' && r[COL.ID] !== null);
+  // Filtra per email (col F = 5) e mese-anno (col M = 12)
+  var filtered = values.filter(function(row) {
+    if (row[0] === '' || row[0] === null) return false; // salta righe vuote
+    var rowEmail = (row[5] || '').toString().toLowerCase().trim();
+    var rowMese  = normMese_(row[12]);
+    return rowEmail === email && (!meseAnno || rowMese === meseAnno);
+  });
 
-  // Filtro per mese, se richiesto
-  if (body.meseAnno) {
-    values = values.filter(r => normMese_(r[COL.MESE]) === body.meseAnno);
-  }
+  // Converti Date/valori in stringhe (coerenza con l'HTML)
+  filtered = filtered.map(function(row) {
+    return row.map(function(cell, i) {
+      if (cell instanceof Date) {
+        return (i === 6)
+          ? Utilities.formatDate(cell, Session.getScriptTimeZone(), 'yyyy-MM-dd')
+          : cell.toISOString();
+      }
+      return cell === null || cell === undefined ? '' : cell.toString();
+    });
+  });
 
-  // Normalizza data e timestamp a stringa (evita oggetti Date serializzati male)
-  values = values.map(r => r.map((v, i) => {
-    if (v instanceof Date) {
-      return (i === COL.DATA) ? toISODate_(v) : v.toISOString();
-    }
-    return v;
-  }));
-
-  return { values };
+  return jsonOk({ values: filtered });
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  RIEPILOGO MENSILE  —  totali per agente del mese corrente
-// ═══════════════════════════════════════════════════════════════════════════
+// ================================================================
+//  RIEPILOGO MENSILE — totali per agente del mese corrente
+// ================================================================
 function aggiornaRiepilogoMensile() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const spese = getSpeseSheet_();
-  const riep = getOrCreateSheet_(ss, CONFIG.TAB_RIEPILOGO);
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var spese = ss.getSheetByName(SHEET_SPESE);
+  if (!spese) throw new Error('Foglio "' + SHEET_SPESE + '" non trovato');
 
-  const meseAnno = meseAnnoCorrente_();
-  const lastRow = spese.getLastRow();
-  const data = lastRow >= 2
-    ? spese.getRange(2, 1, lastRow - 1, HEADERS.length).getValues()
-    : [];
+  var riep = ss.getSheetByName(SHEET_RIEPILOGO);
+  if (!riep) riep = ss.insertSheet(SHEET_RIEPILOGO);
+
+  var meseAnno = meseAnnoCorrente_();
+  var lastRow = spese.getLastRow();
+  var data = lastRow >= 2 ? spese.getRange(2, 1, lastRow - 1, N_COL).getValues() : [];
 
   // Aggrega per agente (chiave = email) le sole righe del mese corrente
-  const map = {}; // email → { nome, zona, n, tot, appr, auth, attesa }
-  data.forEach(r => {
-    if (r[COL.ID] === '' || r[COL.ID] === null) return;
-    if (normMese_(r[COL.MESE]) !== meseAnno) return;
+  var map = {};
+  data.forEach(function(r) {
+    if (r[0] === '' || r[0] === null) return;
+    if (normMese_(r[12]) !== meseAnno) return;
 
-    const email = String(r[COL.EMAIL] || '').toLowerCase();
+    var email = (r[5] || '').toString().toLowerCase().trim();
     if (!email) return;
 
     if (!map[email]) {
       map[email] = {
-        agente: (String(r[COL.NOME] || '') + ' ' + String(r[COL.COGNOME] || '')).trim(),
-        zona:   String(r[COL.ZONA] || ''),
-        n: 0, tot: 0, appr: 0, auth: 0, attesa: 0,
+        agente: ((r[2] || '') + ' ' + (r[3] || '')).toString().trim(),
+        zona:   (r[4] || '').toString(),
+        n: 0, tot: 0, appr: 0, auth: 0, attesa: 0
       };
     }
-    const imp = parseFloat(r[COL.IMPORTO]) || 0;
-    const stato = String(r[COL.STATO] || '').toUpperCase();
-    const a = map[email];
+    var imp = parseFloat(r[9]) || 0;
+    var stato = (r[11] || '').toString().toUpperCase();
+    var a = map[email];
     a.n   += 1;
     a.tot += imp;
-    if (stato === 'APPROVATA')            a.appr   += imp;
-    else if (stato === 'DA AUTORIZZARE')  a.auth   += imp;
-    else                                  a.attesa += imp; // IN ATTESA / altro
+    if (stato === 'APPROVATA')           a.appr   += imp;
+    else if (stato === 'DA AUTORIZZARE') a.auth   += imp;
+    else                                 a.attesa += imp; // IN ATTESA / altro
   });
 
   // Ordina per totale decrescente
-  const righe = Object.keys(map).map(email => {
-    const a = map[email];
+  var righe = Object.keys(map).map(function(email) {
+    var a = map[email];
     return [a.agente, email, a.zona, a.n, a.tot, a.appr, a.auth, a.attesa];
-  }).sort((x, y) => y[4] - x[4]);
+  }).sort(function(x, y) { return y[4] - x[4]; });
 
-  // Ricostruisce il foglio riepilogo
+  // Ricostruisce il foglio
   riep.clear();
 
-  const titolo = 'RIEPILOGO MENSILE — ' + nomeMese_(meseAnno) + '  (agg. ' +
+  var titolo = 'RIEPILOGO MENSILE — ' + nomeMese_(meseAnno) + '  (agg. ' +
     Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') + ')';
   riep.getRange(1, 1).setValue(titolo).setFontWeight('bold').setFontSize(12);
 
-  const intest = ['Agente', 'Email', 'Zona', 'N. Spese',
-                  'Totale €', 'Approvate €', 'Da autorizzare €', 'In attesa €'];
+  var intest = ['Agente', 'Email', 'Zona', 'N. Spese',
+                'Totale €', 'Approvate €', 'Da autorizzare €', 'In attesa €'];
   riep.getRange(2, 1, 1, intest.length).setValues([intest])
       .setFontWeight('bold').setBackground('#1565c0').setFontColor('#ffffff');
 
@@ -206,17 +257,13 @@ function aggiornaRiepilogoMensile() {
     riep.getRange(3, 1, righe.length, intest.length).setValues(righe);
 
     // Riga totali generali
-    const totRow = righe.length + 3;
-    const tot   = righe.reduce((s, r) => s + r[4], 0);
-    const appr  = righe.reduce((s, r) => s + r[5], 0);
-    const auth  = righe.reduce((s, r) => s + r[6], 0);
-    const att   = righe.reduce((s, r) => s + r[7], 0);
-    const nTot  = righe.reduce((s, r) => s + r[3], 0);
+    var totRow = righe.length + 3;
+    var sum = function(i) { return righe.reduce(function(s, r) { return s + r[i]; }, 0); };
     riep.getRange(totRow, 1, 1, intest.length)
-        .setValues([['TOTALE', '', '', nTot, tot, appr, auth, att]])
+        .setValues([['TOTALE', '', '', sum(3), sum(4), sum(5), sum(6), sum(7)]])
         .setFontWeight('bold').setBackground('#e3f2fd');
 
-    // Formattazione valuta sulle colonne E→H
+    // Formato valuta colonne E→H
     riep.getRange(3, 5, righe.length + 1, 4).setNumberFormat('€ #,##0.00');
   } else {
     riep.getRange(3, 1).setValue('Nessuna spesa registrata questo mese.')
@@ -230,71 +277,73 @@ function aggiornaRiepilogoMensile() {
   return righe.length;
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  AZZERA SPESE MENSILI  —  archivia e ripulisce il foglio "Spese"
-//  (accessibile a Cristiana dal menu "Note Spese" nel foglio)
-// ═══════════════════════════════════════════════════════════════════════════
+// ================================================================
+//  AZZERA SPESE MENSILI — svuota SPESE (lo STORICO resta intatto)
+//  Accessibile a Cristiana dal menu "Note Spese" nel foglio.
+// ================================================================
 function azzeraSpeseMensili() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  const spese = getSpeseSheet_();
-  const ui = SpreadsheetApp.getUi();
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var spese = ss.getSheetByName(SHEET_SPESE);
+  var ui = SpreadsheetApp.getUi();
 
-  const lastRow = spese.getLastRow();
-  const nRighe = Math.max(0, lastRow - 1);
-  if (nRighe === 0) {
-    ui.alert('Azzera spese', 'Non ci sono spese da azzerare.', ui.ButtonSet.OK);
+  if (!spese) { ui.alert('Foglio "' + SHEET_SPESE + '" non trovato.'); return; }
+
+  var lastRow = spese.getLastRow();
+  var n = Math.max(0, lastRow - 1);
+  if (n === 0) {
+    ui.alert('Azzera spese', 'Non ci sono spese da azzerare nel foglio "' + SHEET_SPESE + '".', ui.ButtonSet.OK);
     return;
   }
 
-  const risposta = ui.alert(
+  var resp = ui.alert(
     '⚠️ Azzera spese mensili',
-    'Stai per ARCHIVIARE e AZZERARE ' + nRighe + ' spese dal foglio "' + CONFIG.TAB_SPESE + '".\n\n' +
-    'Le righe verranno copiate nel foglio "' + CONFIG.TAB_ARCHIVIO + '" prima della cancellazione.\n\n' +
+    'Stai per svuotare il foglio "' + SHEET_SPESE + '" (' + n + ' righe).\n\n' +
+    'Le spese restano comunque salvate nello "' + SHEET_STORICO + '".\n\n' +
     'Vuoi procedere?',
     ui.ButtonSet.YES_NO
   );
-  if (risposta !== ui.Button.YES) return;
+  if (resp !== ui.Button.YES) return;
 
-  const lock = LockService.getScriptLock();
+  var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    const dati = spese.getRange(2, 1, nRighe, HEADERS.length).getValues()
-                      .filter(r => r[COL.ID] !== '' && r[COL.ID] !== null);
+    // Sicurezza: prima di svuotare, assicura che ogni riga di SPESE sia nello STORICO
+    var dati = spese.getRange(2, 1, n, N_COL).getValues()
+                    .filter(function(r) { return r[0] !== '' && r[0] !== null; });
 
-    // 1) Archivia (con timestamp di archiviazione in coda)
-    if (dati.length > 0) {
-      const arch = getOrCreateSheet_(ss, CONFIG.TAB_ARCHIVIO);
-      if (arch.getLastRow() === 0) {
-        arch.getRange(1, 1, 1, HEADERS.length + 1)
-            .setValues([HEADERS.concat(['DataArchiviazione'])])
-            .setFontWeight('bold');
+    var storico = ss.getSheetByName(SHEET_STORICO);
+    if (storico) {
+      var idsStorico = {};
+      var sLast = storico.getLastRow();
+      if (sLast >= 2) {
+        storico.getRange(2, 1, sLast - 1, 1).getValues().forEach(function(r) {
+          if (r[0] !== '' && r[0] !== null) idsStorico[r[0].toString()] = true;
+        });
       }
-      const stamp = new Date();
-      const conStamp = dati.map(r => r.concat([stamp]));
-      arch.getRange(arch.getLastRow() + 1, 1, conStamp.length, HEADERS.length + 1)
-          .setValues(conStamp);
+      dati.forEach(function(r) {
+        if (!idsStorico[r[0].toString()]) writeRow_(storico, r);
+      });
+      SpreadsheetApp.flush();
     }
 
-    // 2) Cancella le righe dati dal foglio Spese (mantiene l'intestazione)
-    spese.getRange(2, 1, nRighe, HEADERS.length).clearContent();
+    // Svuota le righe dati di SPESE (mantiene l'intestazione)
+    spese.getRange(2, 1, n, N_COL).clearContent();
     SpreadsheetApp.flush();
 
-    // 3) Rigenera il riepilogo (ora vuoto)
+    // Rigenera il riepilogo (ora vuoto per il mese)
     aggiornaRiepilogoMensile();
 
     ui.alert('✅ Fatto',
-      dati.length + ' spese archiviate in "' + CONFIG.TAB_ARCHIVIO + '" e azzerate.',
+      n + ' spese azzerate dal foglio "' + SHEET_SPESE + '".\nLo storico annuale è intatto.',
       ui.ButtonSet.OK);
   } finally {
     lock.releaseLock();
   }
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
+// ================================================================
 //  MENU nel foglio (per Cristiana)
-// ═══════════════════════════════════════════════════════════════════════════
+// ================================================================
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('💼 Note Spese')
@@ -304,64 +353,26 @@ function onOpen() {
     .addToUi();
 }
 
-
-// ═══════════════════════════════════════════════════════════════════════════
+// ================================================================
 //  HELPERS
-// ═══════════════════════════════════════════════════════════════════════════
-function getSpeseSheet_() {
-  const ss = SpreadsheetApp.openById(CONFIG.SHEET_ID);
-  let sheet = ss.getSheetByName(CONFIG.TAB_SPESE);
-
-  // Retro-compatibilità: se il foglio dedicato non esiste, usa il primo foglio
-  if (!sheet) sheet = ss.getSheets()[0];
-
-  // Garantisce l'intestazione corretta in riga 1
-  ensureHeaders_(sheet);
-  return sheet;
-}
-
-function ensureHeaders_(sheet) {
-  const first = sheet.getRange(1, 1).getValue();
-  if (first === '' || first === null) {
-    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS])
-         .setFontWeight('bold').setBackground('#1565c0').setFontColor('#ffffff');
-    sheet.setFrozenRows(1);
-  }
-}
-
-function getOrCreateSheet_(ss, name) {
-  return ss.getSheetByName(name) || ss.insertSheet(name);
-}
-
+// ================================================================
 // "MM-YYYY" del mese corrente (allineato a getMeseAnno() dell'HTML)
 function meseAnnoCorrente_() {
-  const d = new Date();
-  return pad2_(d.getMonth() + 1) + '-' + d.getFullYear();
+  var d = new Date();
+  return ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
 }
 
-// Normalizza il valore della colonna MeseAnno a "MM-YYYY" (gestisce Date/stringhe)
+// Normalizza il valore MeseAnno a "MM-YYYY" (gestisce Date o stringhe)
 function normMese_(v) {
-  if (v instanceof Date) return pad2_(v.getMonth() + 1) + '-' + v.getFullYear();
-  return String(v || '').trim();
+  if (v instanceof Date) return ('0' + (v.getMonth() + 1)).slice(-2) + '-' + v.getFullYear();
+  return (v || '').toString().trim();
 }
 
+// "Luglio 2026" da "07-2026"
 function nomeMese_(meseAnno) {
-  const nomi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
-                'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-  const parts = String(meseAnno).split('-');
-  const m = parseInt(parts[0], 10);
-  const y = parts[1] || '';
-  return (m >= 1 && m <= 12) ? (nomi[m - 1] + ' ' + y) : meseAnno;
-}
-
-function toISODate_(d) {
-  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-}
-
-function pad2_(n) { return String(n).padStart(2, '0'); }
-
-function json_(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+  var nomi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+              'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  var p = meseAnno.toString().split('-');
+  var m = parseInt(p[0], 10);
+  return (m >= 1 && m <= 12) ? (nomi[m - 1] + ' ' + (p[1] || '')) : meseAnno;
 }
