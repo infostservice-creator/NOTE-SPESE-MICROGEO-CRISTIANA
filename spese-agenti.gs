@@ -191,9 +191,6 @@ function aggiornaRiepilogoMensile(ss) {
     ? spese.getRange(FIRST_DATA_ROW, 1, lastRow - FIRST_DATA_ROW + 1, N_COL).getValues()
     : [];
 
-  Logger.log('DIAG lastRow SPESE = ' + lastRow + ' | righe lette = ' + data.length);
-  if (data.length > 0) Logger.log('DIAG prima riga = ' + JSON.stringify(data[0]));
-
   var map = {};
   data.forEach(function(r) {
     if (r[0] === '' || r[0] === null) return;
@@ -209,8 +206,6 @@ function aggiornaRiepilogoMensile(ss) {
     else                              map[key].attesa += imp; // IN ATTESA
   });
 
-  Logger.log('DIAG map = ' + JSON.stringify(map));
-
   // Individua le righe agenti e la riga "TOTALE GENERALE"
   var lastR = riep.getLastRow();
   var colA  = riep.getRange(1, 1, lastR, 1).getValues();
@@ -225,7 +220,6 @@ function aggiornaRiepilogoMensile(ss) {
   if (lastAgentRow < firstAgentRow) return 0;
 
   var names = riep.getRange(firstAgentRow, 1, lastAgentRow - firstAgentRow + 1, 1).getValues();
-  Logger.log('DIAG nomi riepilogo = ' + JSON.stringify(names.map(function(n){ return normName_(n[0]); })));
 
   // Costruisce i valori C..H per ogni riga agente
   var out = [];

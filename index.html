@@ -1108,8 +1108,8 @@ async function submitExpense() {
     user.email,
     data,
     tipo,
-    km !== null ? String(km) : '',
-    importo.toFixed(2),
+    km !== null ? km : '',                 // numero (non stringa) per evitare interpretazioni locali
+    Number(importo.toFixed(2)),            // IMPORTO come NUMERO puro (non "12.00" testo → orario!)
     note,
     stato,
     '',            // M = Note revisione (compilata da Cristiana)
