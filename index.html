@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Note Spese — Microgeo / Dynatech</title>
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <style>
+    :root {
+      --primary:       #1565c0;
+      --primary-light: #1976d2;
+      --primary-dark:  #0d47a1;
+      --success:       #2e7d32;
+      --warning-bg:    #fff8e1;
+      --warning-text:  #e65100;
+      --danger:        #c62828;
+      --danger-light:  #ffebee;
+      --danger-border: #ef9a9a;
+      --pending-color: #f57f17;
+      --bg:            #f0f4f8;
+      --card:          #ffffff;
+      --text:          #1a1a2e;
+      --text-muted:    #5f6368;
+      --border:        #dadce0;
+      --radius:        14px;
+      --shadow:        0 1px 6px rgba(0,0,0,0.10);
+      --shadow-lg:     0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+    }
+
+    /* ── SCHERMATE ─────────────────────────────── */
+    .screen { display: none !important; }
+    .screen.active { display: block !important; }
+
+    /* ── LOGIN ─────────────────────────────────── */
+    #screen-login {
+      min-height: 100vh;
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(160deg, #0d47a1 0%, #1565c0 45%, #1976d2 100%);
+    }
+
+    .login-logo {
+      width: 88px; height: 88px;
+      background: white;
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 46px;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+    }
+
+    .login-title {
+      font-size: 26px; font-weight: 700; color: white;
+      text-align: center; margin-bottom: 6px; letter-spacing: -0.3px;
+    }
+
+    .login-subtitle {
+      font-size: 14px; color: rgba(255,255,255,0.75);
+      text-align: center; margin-bottom: 36px;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 22px;
+      padding: 32px 28px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 10px 48px rgba(0,0,0,0.22);
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+    }
+
+    .login-card h2 { font-size: 18px; font-weight: 600; color: var(--text); }
+
+    .login-divider {
+      width: 100%; border: none; border-top: 1px solid var(--border); margin: 4px 0;
+    }
+
+    .login-info {
+      font-size: 12.5px; color: var(--text-muted);
+      text-align: center; line-height: 1.55;
+    }
+
+    .login-version {
+      font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 20px;
+    }
+
+    /* ── NON AUTORIZZATO ───────────────────────── */
+    #screen-unauthorized {
+      min-height: 100vh;
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      background: var(--danger-light);
+      text-align: center;
+    }
+
+    #screen-unauthorized .icon { font-size: 72px; margin-bottom: 16px; }
+    #screen-unauthorized h2 { color: var(--danger); margin-bottom: 12px; font-size: 22px; }
+    #screen-unauthorized p  { color: var(--text-muted); line-height: 1.6; max-width: 320px; margin: 0 auto 8px; }
+    #unauth-email { font-size: 13px; color: var(--danger); margin-top: 8px; font-weight: 500; margin-bottom: 28px; }
+
+    /* ── HEADER ────────────────────────────────── */
+    .app-header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 200;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      min-height: 60px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 10px; }
+
+    .user-avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 15px;
+      overflow: hidden; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.35);
+    }
+    .user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .user-name  { font-weight: 600; font-size: 15px; line-height: 1.2; }
+    .user-zone  { font-size: 12px; opacity: 0.75; }
+
+    .btn-logout {
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.28);
+      color: white;
+      border-radius: 8px;
+      padding: 7px 13px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,0.22); }
+
+    /* ── TAB BAR ───────────────────────────────── */
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 2px solid var(--border);
+      position: sticky; top: 60px; z-index: 100;
+    }
+
+    .tab {
+      flex: 1; padding: 12px 8px;
+      text-align: center;
+      font-size: 13px; font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      user-select: none;
+    }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .tab-icon   { font-size: 20px; display: block; margin-bottom: 2px; }
+
+    /* ── CONTENUTO ─────────────────────────────── */
+    .content {
+      padding: 16px;
+      max-width: 640px;
+      margin: 0 auto;
+      padding-bottom: 40px;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── CARD FORM ─────────────────────────────── */
+    .form-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .form-card h3 {
+      font-size: 16px; font-weight: 600;
+      margin-bottom: 18px; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── FORM FIELDS ───────────────────────────── */
+    .form-group { margin-bottom: 15px; }
+
+    .form-group label {
+      display: block;
+      font-size: 11.5px; font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px; color: var(--text);
+      background: white;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      -webkit-appearance: none; appearance: none;
+      font-family: inherit;
+    }
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+    }
+    .form-control.has-error { border-color: var(--danger); }
+    .form-control:disabled  { background: #f8f9fa; color: var(--text-muted); }
+
+    select.form-control {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 13px center;
+      padding-right: 38px;
+      cursor: pointer;
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+      line-height: 1.5;
+    }
+
+    /* ── IMPORTO DISPLAY ───────────────────────── */
+    .importo-display {
+      font-size: 32px; font-weight: 700;
+      text-align: center;
+      padding: 14px 12px;
+      border-radius: 12px;
+      background: #f8f9fa;
+      color: var(--text-muted);
+      margin: 10px 0 4px;
+      transition: all 0.25s;
+      letter-spacing: -1px;
+    }
+    .importo-display.ok       { color: var(--success); background: #e8f5e9; }
+    .importo-display.over-cap { color: var(--danger);  background: var(--danger-light); }
+
+    /* ── ALERT ─────────────────────────────────── */
+    .alert {
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      margin-bottom: 12px;
+      line-height: 1.5;
+      display: flex; align-items: flex-start; gap: 10px;
+    }
+    .alert-icon { font-size: 18px; flex-shrink: 0; }
+
+    .alert-danger {
+      background: var(--danger-light);
+      border: 1px solid var(--danger-border);
+      color: var(--danger);
+    }
+    .alert-warning {
+      background: var(--warning-bg);
+      border: 1px solid #ffe082;
+      color: var(--warning-text);
+    }
+    .alert-info {
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      color: #0d47a1;
+    }
+    .alert-success {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      color: var(--success);
+    }
+
+    .note-hint {
+      font-size: 12px;
+      margin-top: 5px;
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
+    .note-hint.required { color: var(--danger); background: var(--danger-light); }
+    .note-hint.optional { color: var(--text-muted); }
+
+    /* ── BOTTONI ───────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      gap: 8px;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 15px; font-weight: 600;
+      cursor: pointer; border: none;
+      transition: all 0.2s;
+      width: 100%;
+      font-family: inherit;
+      letter-spacing: 0.1px;
+    }
+
+    .btn-primary {
+      background: var(--primary); color: white;
+      box-shadow: 0 2px 8px rgba(21,101,192,0.30);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+      box-shadow: 0 4px 14px rgba(21,101,192,0.38);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled {
+      background: #90caf9; cursor: not-allowed;
+      box-shadow: none; transform: none;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    .btn-outline:hover { background: #e3f2fd; }
+
+    /* ── SPINNER ───────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
+    }
+
+    /* ── LOADING OVERLAY ───────────────────────── */
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(240,244,248,0.88);
+      backdrop-filter: blur(3px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 999; gap: 16px;
+    }
+    .loading-overlay.hidden { display: none; }
+
+    .spinner-lg {
+      width: 44px; height: 44px;
+      border: 3.5px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+    .loading-text { font-size: 14px; color: var(--text-muted); font-weight: 500; }
+
+    /* ── TOAST ─────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: #1a1a2e; color: white;
+      padding: 13px 22px;
+      border-radius: 50px;
+      font-size: 14px; font-weight: 500;
+      z-index: 1001;
+      transition: transform 0.3s cubic-bezier(.22,.61,.36,1);
+      max-width: 90vw; text-align: center;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.28);
+      white-space: pre-line;
+    }
+    .toast.show    { transform: translateX(-50%) translateY(0); }
+    .toast.success { background: #1b5e20; }
+    .toast.error   { background: #b71c1c; }
+
+    /* ── RIEPILOGO MESE ────────────────────────── */
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; margin-bottom: 16px;
+    }
+
+    .summary-card {
+      background: white; border-radius: 12px;
+      padding: 14px 12px;
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .summary-label { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+    .summary-value { font-size: 22px; font-weight: 700; color: var(--primary); }
+    .summary-value.danger  { color: var(--danger); }
+    .summary-value.success { color: var(--success); }
+
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px;
+    }
+    .section-header h3 { font-size: 16px; font-weight: 600; }
+    .btn-refresh {
+      background: none; border: none;
+      color: var(--primary); font-size: 13px;
+      cursor: pointer; font-weight: 600;
+      padding: 6px 10px; border-radius: 8px;
+      font-family: inherit;
+    }
+    .btn-refresh:hover { background: #e3f2fd; }
+
+    /* ── EXPENSE CARDS ─────────────────────────── */
+    .expense-card {
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--border);
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px;
+    }
+    .expense-card.s-in-attesa    { border-left-color: var(--pending-color); }
+    .expense-card.s-da-autorizzare { border-left-color: var(--danger); background: #fffbfb; }
+    .expense-card.s-approvata    { border-left-color: var(--success); }
+    .expense-card.s-rifiutata    { border-left-color: #9e9e9e; opacity: 0.75; }
+
+    .expense-left { flex: 1; min-width: 0; }
+    .expense-type { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .expense-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 3px; }
+    .expense-note { font-size: 12px; color: var(--text-muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+
+    .expense-right { text-align: right; flex-shrink: 0; }
+    .expense-amount { font-size: 18px; font-weight: 700; }
+    .status-badge {
+      display: inline-block;
+      font-size: 10.5px; padding: 3px 8px;
+      border-radius: 12px; font-weight: 700;
+      margin-top: 5px; letter-spacing: 0.3px;
+    }
+    .b-in-attesa      { background: #fff8e1; color: #e65100; }
+    .b-da-autorizzare { background: var(--danger-light); color: var(--danger); }
+    .b-approvata      { background: #e8f5e9; color: var(--success); }
+    .b-rifiutata      { background: #f5f5f5; color: #757575; }
+
+    /* ── EMPTY STATE ───────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 52px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state .es-icon { font-size: 54px; margin-bottom: 14px; }
+    .empty-state p { font-size: 15px; line-height: 1.5; }
+
+    /* ── RESPONSIVE ────────────────────────────── */
+    @media (min-width: 600px) {
+      .content { padding: 24px; }
+      .form-card { padding: 28px 26px; }
+      .importo-display { font-size: 38px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay" class="loading-overlay hidden">
+  <div class="spinner-lg"></div>
+  <div class="loading-text" id="loading-text">Caricamento...</div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- ══════════════════════════════════════════════════
+     SCHERMATA: LOGIN
+════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-logo">💼</div>
+  <div class="login-title">Note Spese</div>
+  <div class="login-subtitle">Microgeo S.r.l. &amp; Dynatech S.r.l.</div>
+
+  <div class="login-card">
+    <h2>Accedi al portale</h2>
+
+    <!-- Google Sign-In Button (GIS) -->
+    <div id="g_id_onload"
+         data-client_id="151510373742-2s9c58nvrfd3j79jspc83cpgkujkir4m.apps.googleusercontent.com"
+         data-context="signin"
+         data-ux_mode="popup"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+         data-type="standard"
+         data-shape="rectangular"
+         data-theme="outline"
+         data-text="signin_with"
+         data-size="large"
+         data-logo_alignment="left"
+         data-width="310">
+    </div>
+
+    <hr class="login-divider">
+    <p class="login-info">
+      Accesso riservato agli agenti autorizzati.<br>
+      Usa la tua email <strong>@microgeo.it</strong> oppure il tuo account <strong>Gmail</strong>
+    </p>
+    <p class="login-info" style="font-size:11.5px;">
+      In vigore: Circolare n.18/26 del 25/06/2026
+    </p>
+  </div>
+
+  <div class="login-version">v1.0.0 — Luglio 2026</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCHERMATA: NON AUTORIZZATO
+════════════════════════════════════════════════════ -->
+<div id="screen-unauthorized" class="screen">
+  <div class="icon">🚫</div>
+  <h2>Accesso non autorizzato</h2>
+  <p>L'email usata non è nella lista degli agenti autorizzati.<br>Contatta il tuo capo area.</p>
+  <div id="unauth-email"></div>
+  <button class="btn btn-outline" style="max-width:220px;" onclick="doLogout()">
+    🔄 Prova con un altro account
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCHERMATA: APP PRINCIPALE
+════════════════════════════════════════════════════ -->
+<div id="screen-app" class="screen">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="user-avatar" id="user-avatar">??</div>
+      <div>
+        <div class="user-name" id="user-name">—</div>
+        <div class="user-zone" id="user-zone">—</div>
+      </div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Esci ↩</button>
+  </header>
+
+  <!-- Tab bar -->
+  <nav class="tabs">
+    <div class="tab active" id="tab-btn-nuova" onclick="switchTab('nuova')">
+      <span class="tab-icon">➕</span>Nuova spesa
+    </div>
+    <div class="tab" id="tab-btn-mie" onclick="switchTab('mie')">
+      <span class="tab-icon">📋</span>Le mie spese
+    </div>
+  </nav>
+
+  <!-- Contenuto -->
+  <div class="content">
+
+    <!-- ── TAB: NUOVA SPESA ── -->
+    <div id="tab-nuova" class="tab-content active">
+
+      <div class="form-card">
+        <h3>📝 Inserisci una nuova spesa</h3>
+
+        <!-- Alert globale form -->
+        <div id="form-alert"></div>
+
+        <!-- Tipologia -->
+        <div class="form-group">
+          <label for="f-tipo">Tipologia *</label>
+          <select id="f-tipo" class="form-control" onchange="onTipoChange()">
+            <option value="">— Seleziona il tipo di spesa —</option>
+            <option value="Pranzo">🍽️  Pranzo</option>
+            <option value="Cena">🌙  Cena</option>
+            <option value="Pernottamento">🏨  Pernottamento</option>
+            <option value="Km percorsi">🚗  Km percorsi</option>
+            <option value="Varie">📦  Varie</option>
+            <option value="Pedaggi">🛣️  Pedaggi / Autostrada</option>
+          </select>
+        </div>
+
+        <!-- Data spesa -->
+        <div class="form-group">
+          <label for="f-data">Data spesa *</label>
+          <input type="date" id="f-data" class="form-control" oninput="validateForm()" />
+        </div>
+
+        <!-- Km (solo per "Km percorsi") -->
+        <div id="group-km" class="form-group" style="display:none;">
+          <label for="f-km">Km percorsi *</label>
+          <input type="number" id="f-km" class="form-control"
+                 placeholder="Es. 120" min="1" max="2000" step="1"
+                 oninput="onKmChange()" />
+          <div id="km-calc" class="note-hint optional" style="display:none;"></div>
+        </div>
+
+        <!-- Importo (tutti tranne Km) -->
+        <div id="group-importo" class="form-group" style="display:none;">
+          <label for="f-importo">Importo (€) *</label>
+          <input type="number" id="f-importo" class="form-control"
+                 placeholder="Es. 28,50" min="0.01" step="0.01"
+                 oninput="onImportoChange()" />
+        </div>
+
+        <!-- Display importo calcolato -->
+        <div id="importo-display" class="importo-display" style="display:none;">€ 0,00</div>
+
+        <!-- Alert tetto superato -->
+        <div id="cap-alert" style="display:none;"></div>
+
+        <!-- Note -->
+        <div id="group-note" class="form-group" style="display:none;">
+          <label id="note-label" for="f-note">Note</label>
+          <textarea id="f-note" class="form-control" rows="3"
+                    placeholder="Inserisci le note..."
+                    oninput="onNoteChange()"></textarea>
+          <div id="note-hint"></div>
+        </div>
+
+        <!-- Bottone invio -->
+        <button id="btn-submit" class="btn btn-primary" onclick="submitExpense()" style="display:none;" disabled>
+          Invia spesa
+        </button>
+
+      </div><!-- /form-card -->
+
+      <!-- Info regole -->
+      <div class="form-card" style="background:#f8f9fa; box-shadow:none; border:1px solid var(--border);">
+        <h3 style="font-size:14px; color:var(--text-muted); margin-bottom:12px;">ℹ️ Regole rimborso (Circ. 18/26)</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr style="color:var(--text-muted); text-transform:uppercase; font-size:11px; letter-spacing:0.5px;">
+              <th style="text-align:left; padding:5px 0; border-bottom:1px solid var(--border);">Tipo</th>
+              <th style="text-align:right; padding:5px 0; border-bottom:1px solid var(--border);">Tetto</th>
+              <th style="text-align:right; padding:5px 0; border-bottom:1px solid var(--border);">Note</th>
+            </tr>
+          </thead>
+          <tbody id="rules-table-body"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /tab-nuova -->
+
+    <!-- ── TAB: LE MIE SPESE ── -->
+    <div id="tab-mie" class="tab-content">
+
+      <!-- Riepilogo numerico -->
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">Totale mese</div>
+          <div class="summary-value" id="total-mese">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">N. spese</div>
+          <div class="summary-value" id="count-spese">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Da autorizzare</div>
+          <div class="summary-value danger" id="count-auth">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Approvate</div>
+          <div class="summary-value success" id="count-approved">—</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <h3 id="month-title">—</h3>
+        <button class="btn-refresh" onclick="loadMyExpenses()">🔄 Aggiorna</button>
+      </div>
+
+      <div id="expenses-list">
+        <div class="empty-state">
+          <div class="es-icon">⏳</div>
+          <p>Caricamento in corso...</p>
+        </div>
+      </div>
+
+    </div><!-- /tab-mie -->
+
+  </div><!-- /content -->
+</div><!-- /screen-app -->
+
+
+<script>
+// ================================================================
+//  CONFIGURAZIONE — DA COMPILARE PRIMA DEL DEPLOY
+// ================================================================
+const CONFIG = {
+  // 1. Google Cloud Console → API & Services → Credentials → OAuth 2.0 Client ID
+  CLIENT_ID: '151510373742-2s9c58nvrfd3j79jspc83cpgkujkir4m.apps.googleusercontent.com',
+
+  // 2. URL del Google Sheet (es: .../spreadsheets/d/QUESTO_ID/edit)
+  SHEET_ID: '1xOybU3_34SY19p0xv70xUOmG8Sy076vy',
+
+  // 3. Nomi esatti dei fogli nel Google Sheet (case-sensitive)
+  SHEET_CURRENT: 'SPESE MESE CORRENTE',
+  SHEET_HISTORY: 'STORICO ANNUALE',
+};
+
+// ================================================================
+//  LISTA AGENTI AUTORIZZATI
+//  Formato: 'email.aziendale@dominio.it' → { nome, cognome, zona }
+//  ⏳ Aggiungere le email Gmail personali quando raccolte
+// ================================================================
+const AGENTS = {
+  // ── Agenti Microgeo ──────────────────────────────────────────
+  'd.battaglia@microgeo.it':  { nome: 'Davide',     cognome: 'Battaglia',   zona: 'Sud'     },
+  'a.carraro@microgeo.it':    { nome: 'Alessandro', cognome: 'Carraro',     zona: 'Nord'    },
+  'c.ferrara@microgeo.it':    { nome: 'Christian',  cognome: 'Ferrara',     zona: 'Nord'    },
+  'm.friggi@microgeo.it':     { nome: 'Marco',      cognome: 'Friggi',      zona: 'Nord'    },
+  'd.guidotti@microgeo.it':   { nome: 'Davide',     cognome: 'Guidotti',    zona: 'Centro'  },
+  'i.racu@microgeo.it':       { nome: 'Ilie',       cognome: 'Racu',        zona: 'Nord'    },
+  's.solda@microgeo.it':      { nome: 'Sebastiano', cognome: 'Soldà',       zona: 'Nord'    },
+  'a.deamicis@microgeo.it':   { nome: 'Antonello',  cognome: 'De Amicis',   zona: 'Centro'  },
+  'm.costantino@microgeo.it': { nome: 'Michele',    cognome: 'Costantino',  zona: 'Sud'     },
+  'f.conti@microgeo.it':      { nome: 'Francesco',  cognome: 'Conti',       zona: 'Tecnico' },
+  'g.palmer@microgeo.it':     { nome: 'Giovanni',   cognome: 'Palmer',      zona: 'Tecnico' },
+  'g.russo@microgeo.it':      { nome: 'Gianni',     cognome: 'Russo',       zona: 'Tecnico' },
+  // ── Agenti Dynatech ──────────────────────────────────────────
+  'f.damiani@dynatech.it':    { nome: 'Francesco',  cognome: 'Damiani',     zona: 'Centro'  },
+  's.toccaceli@dynatech.it':  { nome: 'Sergio',     cognome: 'Toccaceli',   zona: 'Centro'  },
+  'g.servodio@dynatech.it':   { nome: 'Giampaolo',  cognome: 'Servodio',    zona: '—'       },
+  'a.raimondi@dynatech.it':   { nome: 'Andrea',     cognome: 'Raimondi',    zona: '—'       },
+  // ── Email Gmail personali (aggiungere qui) ────────────────────
+  // 'nome.cognome@gmail.com': { nome: 'Nome', cognome: 'Cognome', zona: 'Zona' },
+  'giampaolo.servodio@gmail.com':  { nome: 'Giampaolo', cognome: 'Servodio', zona: '—'      },
+  'raimondiandrea9@gmail.com':     { nome: 'Andrea',    cognome: 'Raimondi', zona: '—'      },
+  'damianifrancesco25@gmail.com':  { nome: 'Francesco', cognome: 'Damiani',  zona: 'Centro' },
+};
+
+// ================================================================
+//  REGOLE DI SPESA (Circolare n.18/26 — in vigore dal 01/07/2026)
+// ================================================================
+const RULES = {
+  'Pranzo':        { cap: 35,   kmRate: null, noteRule: 'over_cap', icon: '🍽️',  capLabel: '€ 35,00' },
+  'Cena':          { cap: 45,   kmRate: null, noteRule: 'over_cap', icon: '🌙',  capLabel: '€ 45,00' },
+  'Pernottamento': { cap: 130,  kmRate: null, noteRule: 'over_cap', icon: '🏨',  capLabel: '€ 130,00' },
+  'Km percorsi':   { cap: null, kmRate: 0.50, noteRule: 'never',    icon: '🚗',  capLabel: '€ 0,50/km' },
+  'Varie':         { cap: null, kmRate: null, noteRule: 'always',   icon: '📦',  capLabel: 'Nessun tetto' },
+  'Pedaggi':       { cap: null, kmRate: null, noteRule: 'always',   icon: '🛣️', capLabel: 'Nessun tetto' },
+};
+
+// ================================================================
+//  STATO APPLICAZIONE
+// ================================================================
+let APP = {
+  user:         null,   // { email, name, picture }
+  agent:        null,   // dati da AGENTS
+  accessToken:  null,
+  tokenClient:  null,
+  submitting:   false,
+};
+
+// ================================================================
+//  INIZIALIZZAZIONE
+// ================================================================
+window.addEventListener('load', () => {
+  // Popola tabella regole nella schermata form
+  renderRulesTable();
+
+  // Imposta data di default = oggi
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-data').value = today;
+
+  // GIS si inizializza da solo tramite attributi data- sul div #g_id_onload
+});
+
+// Popola la tabella regole (scheda "Nuova spesa")
+function renderRulesTable() {
+  const noteLabels = { over_cap: 'Solo se oltre tetto', always: 'Sempre', never: 'Mai' };
+  const rows = Object.entries(RULES).map(([tipo, r]) => `
+    <tr>
+      <td style="padding:7px 4px 7px 0;">${r.icon} ${tipo}</td>
+      <td style="text-align:right; padding:7px 4px; color:${r.cap ? 'var(--warning-text)' : 'var(--text-muted)'}; font-weight:${r.cap ? '600' : '400'};">${r.capLabel}</td>
+      <td style="text-align:right; padding:7px 0 7px 4px; color:var(--text-muted);">${noteLabels[r.noteRule]}</td>
+    </tr>`).join('');
+  document.getElementById('rules-table-body').innerHTML = rows;
+}
+
+// ================================================================
+//  GOOGLE SIGN-IN → CALLBACK
+// ================================================================
+function handleCredentialResponse(response) {
+  // Decodifica JWT (payload in base64url, non serve verifica firma lato client)
+  let payload;
+  try {
+    const b64 = response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    payload = JSON.parse(atob(b64));
+  } catch (e) {
+    showToast('Errore nel login. Riprova.', 'error');
+    return;
+  }
+
+  const email = (payload.email || '').toLowerCase().trim();
+
+  if (!AGENTS[email]) {
+    document.getElementById('unauth-email').textContent = `Email: ${email}`;
+    showScreen('unauthorized');
+    return;
+  }
+
+  APP.user  = { email, name: payload.name || '', picture: payload.picture || '' };
+  APP.agent = AGENTS[email];
+
+  // Richiedi token OAuth per Sheets API
+  initAndRequestToken();
+}
+
+// ================================================================
+//  OAUTH TOKEN PER GOOGLE SHEETS
+// ================================================================
+function initAndRequestToken() {
+  APP.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    callback: (tokenResponse) => {
+      if (tokenResponse.error) {
+        showToast('Errore autorizzazione Sheets: ' + tokenResponse.error, 'error');
+        showScreen('login');
+        return;
+      }
+      APP.accessToken = tokenResponse.access_token;
+
+      // Imposta auto-refresh del token prima della scadenza (55 min)
+      setTimeout(refreshToken, 55 * 60 * 1000);
+
+      enterApp();
+    },
+  });
+
+  APP.tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function refreshToken() {
+  if (APP.tokenClient) {
+    APP.tokenClient.requestAccessToken({ prompt: '' });
+  }
+}
+
+// ================================================================
+//  ENTRATA IN APP
+// ================================================================
+function enterApp() {
+  const { agent, user } = APP;
+
+  // Header
+  document.getElementById('user-name').textContent  = `${agent.nome} ${agent.cognome}`;
+  document.getElementById('user-zone').textContent  = `Zona: ${agent.zona}`;
+
+  const avatarEl = document.getElementById('user-avatar');
+  if (user.picture) {
+    avatarEl.innerHTML = `<img src="${user.picture}" alt="${agent.nome}" referrerpolicy="no-referrer">`;
+  } else {
+    avatarEl.textContent = (agent.nome[0] + agent.cognome[0]).toUpperCase();
+  }
+
+  // Data default
+  document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
+
+  showScreen('app');
+  loadMyExpenses();
+}
+
+// ================================================================
+//  LOGOUT
+// ================================================================
+function doLogout() {
+  try { google.accounts.id.disableAutoSelect(); } catch (_) {}
+  if (APP.accessToken) {
+    try { google.accounts.oauth2.revoke(APP.accessToken, () => {}); } catch (_) {}
+  }
+  APP = { user: null, agent: null, accessToken: null, tokenClient: null, submitting: false };
+  resetForm();
+  switchTab('nuova');
+  showScreen('login');
+}
+
+// ================================================================
+//  NAVIGAZIONE
+// ================================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(`screen-${name}`).classList.add('active');
+}
+
+function switchTab(name) {
+  ['nuova', 'mie'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+    document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
+  });
+  if (name === 'mie') loadMyExpenses();
+}
+
+// ================================================================
+//  LOGICA FORM — EVENTO CAMBIO TIPOLOGIA
+// ================================================================
+function onTipoChange() {
+  const tipo = document.getElementById('f-tipo').value;
+
+  // Reset UI
+  setVisible('group-km',       false);
+  setVisible('group-importo',  false);
+  setVisible('importo-display',false);
+  setVisible('cap-alert',      false);
+  setVisible('group-note',     false);
+  setVisible('btn-submit',     false);
+  document.getElementById('form-alert').innerHTML = '';
+  document.getElementById('f-km').value = '';
+  document.getElementById('f-importo').value = '';
+  document.getElementById('f-note').value = '';
+  document.getElementById('km-calc').style.display = 'none';
+
+  if (!tipo) return;
+
+  const rule = RULES[tipo];
+
+  if (rule.kmRate !== null) {
+    // Km percorsi
+    setVisible('group-km', true);
+    updateImportoDisplay(0, tipo);
+    setVisible('importo-display', true);
+  } else {
+    setVisible('group-importo',   true);
+    setVisible('importo-display', true);
+    updateImportoDisplay(0, tipo);
+  }
+
+  setVisible('group-note',  true);
+  setVisible('btn-submit',  true);
+  updateNoteLabel(tipo, false);
+
+  // Messaggio per categorie sempre con note
+  if (rule.noteRule === 'always') {
+    document.getElementById('form-alert').innerHTML = alertHTML('info',
+      'ℹ️', `Le <strong>note sono obbligatorie</strong> per <em>${tipo}</em>.`);
+  }
+
+  validateForm();
+}
+
+// ================================================================
+//  EVENTO KM
+// ================================================================
+function onKmChange() {
+  const km = parseFloat(document.getElementById('f-km').value) || 0;
+  const importo = km * 0.50;
+  const calcEl = document.getElementById('km-calc');
+
+  if (km > 0) {
+    calcEl.style.display = 'block';
+    calcEl.textContent = `${km} km × €0,50 = €${importo.toFixed(2).replace('.',',')}`;
+  } else {
+    calcEl.style.display = 'none';
+  }
+
+  updateImportoDisplay(importo, 'Km percorsi');
+  validateForm();
+}
+
+// ================================================================
+//  EVENTO IMPORTO
+// ================================================================
+function onImportoChange() {
+  const tipo    = document.getElementById('f-tipo').value;
+  const importo = parseFloat(document.getElementById('f-importo').value) || 0;
+  if (!tipo) return;
+
+  updateImportoDisplay(importo, tipo);
+  checkCap(tipo, importo);
+  validateForm();
+}
+
+// ================================================================
+//  EVENTO NOTE
+// ================================================================
+function onNoteChange() {
+  validateForm();
+}
+
+// ================================================================
+//  AGGIORNA DISPLAY IMPORTO
+// ================================================================
+function updateImportoDisplay(importo, tipo) {
+  const rule = RULES[tipo] || {};
+  const el   = document.getElementById('importo-display');
+  el.textContent = `€ ${importo.toFixed(2).replace('.', ',')}`;
+
+  el.className = 'importo-display';
+  if (importo > 0) {
+    el.classList.add(rule.cap && importo > rule.cap ? 'over-cap' : 'ok');
+  }
+}
+
+// ================================================================
+//  CONTROLLO TETTO
+// ================================================================
+function checkCap(tipo, importo) {
+  const rule    = RULES[tipo] || {};
+  const alertEl = document.getElementById('cap-alert');
+
+  if (!rule.cap || importo <= 0) {
+    alertEl.style.display = 'none';
+    alertEl.innerHTML = '';
+    updateNoteLabel(tipo, false);
+    return;
+  }
+
+  const isOver = importo > rule.cap;
+  if (isOver) {
+    const eccedenza = (importo - rule.cap).toFixed(2).replace('.', ',');
+    alertEl.style.display = 'block';
+    alertEl.innerHTML = alertHTML('danger', '🚨',
+      `<strong>Spesa oltre il tetto massimo</strong> (limite ${tipo}: €${rule.cap.toFixed(2).replace('.',',')})<br>
+       Eccedenza: <strong>+€${eccedenza}</strong><br>
+       <span style="font-size:12px;">La spesa sarà contrassegnata come <strong>DA AUTORIZZARE</strong>. Le note sono obbligatorie.</span>`);
+  } else {
+    alertEl.style.display = 'none';
+    alertEl.innerHTML = '';
+  }
+
+  updateNoteLabel(tipo, isOver);
+}
+
+// ================================================================
+//  AGGIORNA LABEL NOTE
+// ================================================================
+function updateNoteLabel(tipo, isOverCap) {
+  const rule  = RULES[tipo] || {};
+  const reqd  = rule.noteRule === 'always' || (rule.noteRule === 'over_cap' && isOverCap);
+  const never = rule.noteRule === 'never';
+
+  const labelEl = document.getElementById('note-label');
+  const hintEl  = document.getElementById('note-hint');
+  const noteEl  = document.getElementById('f-note');
+
+  if (reqd) {
+    labelEl.innerHTML = 'Note <span style="color:var(--danger)">*</span>';
+    noteEl.placeholder = 'Inserisci la motivazione (obbligatoria)...';
+    hintEl.className   = 'note-hint required';
+    hintEl.textContent = reqd && rule.noteRule === 'over_cap'
+      ? '⚠️ Spesa oltre tetto: note obbligatorie per l\'autorizzazione'
+      : '⚠️ Per questa categoria le note sono sempre obbligatorie';
+  } else if (never) {
+    labelEl.textContent = 'Note (opzionale)';
+    noteEl.placeholder  = 'Eventuale nota aggiuntiva (facoltativa)...';
+    hintEl.className    = 'note-hint optional';
+    hintEl.textContent  = 'Per i Km percorsi le note non sono richieste';
+  } else {
+    labelEl.textContent = 'Note (opzionale)';
+    noteEl.placeholder  = rule.cap
+      ? `Se superi €${rule.cap.toFixed(0)} le note diventano obbligatorie`
+      : 'Eventuale nota aggiuntiva...';
+    hintEl.className    = 'note-hint optional';
+    hintEl.textContent  = '';
+  }
+}
+
+// ================================================================
+//  VALIDAZIONE FORM — abilita/disabilita pulsante invio
+// ================================================================
+function validateForm() {
+  const tipo  = document.getElementById('f-tipo').value;
+  const data  = document.getElementById('f-data').value;
+  const btn   = document.getElementById('btn-submit');
+
+  if (!tipo || !data) { btn.disabled = true; return; }
+
+  const rule = RULES[tipo];
+  let importo = 0;
+
+  if (rule.kmRate) {
+    const km = parseFloat(document.getElementById('f-km').value) || 0;
+    if (km < 1) { btn.disabled = true; return; }
+    importo = km * rule.kmRate;
+  } else {
+    importo = parseFloat(document.getElementById('f-importo').value) || 0;
+    if (importo <= 0) { btn.disabled = true; return; }
+  }
+
+  const isOverCap = rule.cap && importo > rule.cap;
+  const needNote  = rule.noteRule === 'always' || (rule.noteRule === 'over_cap' && isOverCap);
+  const note      = document.getElementById('f-note').value.trim();
+
+  if (needNote && !note) {
+    btn.disabled = true;
+    const hintEl = document.getElementById('note-hint');
+    hintEl.className   = 'note-hint required';
+    hintEl.textContent = '⚠️ Inserisci le note per procedere con l\'invio';
+    return;
+  }
+
+  btn.disabled = false;
+}
+
+// ================================================================
+//  INVIO SPESA → GOOGLE SHEETS
+// ================================================================
+async function submitExpense() {
+  if (APP.submitting) return;
+
+  const tipo  = document.getElementById('f-tipo').value;
+  const data  = document.getElementById('f-data').value;
+  const note  = document.getElementById('f-note').value.trim();
+  const rule  = RULES[tipo];
+
+  let km = null;
+  let importo = 0;
+
+  if (rule.kmRate) {
+    km      = parseFloat(document.getElementById('f-km').value) || 0;
+    importo = km * rule.kmRate;
+  } else {
+    importo = parseFloat(document.getElementById('f-importo').value) || 0;
+  }
+
+  const isOverCap = rule.cap && importo > rule.cap;
+  const stato     = isOverCap ? 'DA AUTORIZZARE' : 'IN ATTESA';
+  const id        = `SPE-${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  const meseAnno  = getMeseAnno();
+  const { agent, user } = APP;
+
+  // Struttura riga Google Sheet
+  // A        B          C          D            E          F          G     H     I        J                    K     L      M
+  // ID | Timestamp | Nome | Cognome | Zona | Email | DataSpesa | Tipo | Km | Importo€ | Note | Stato | MeseAnno
+  const row = [
+    id,
+    timestamp,
+    agent.nome,
+    agent.cognome,
+    agent.zona,
+    user.email,
+    data,
+    tipo,
+    km !== null ? String(km) : '',
+    importo.toFixed(2),
+    note,
+    stato,
+    meseAnno,
+  ];
+
+  APP.submitting = true;
+  const btnEl = document.getElementById('btn-submit');
+  btnEl.innerHTML = '<span class="spinner"></span> Invio in corso...';
+  btnEl.disabled  = true;
+  showLoading('Invio spesa in corso...');
+
+  try {
+    await sheetsAppend(CONFIG.SHEET_CURRENT, row);
+    await sheetsAppend(CONFIG.SHEET_HISTORY,  row);
+
+    hideLoading();
+
+    const msg = isOverCap
+      ? `✅ Spesa inviata\n⚠️ Stato: DA AUTORIZZARE\n(importo oltre il tetto di €${rule.cap})`
+      : `✅ Spesa inviata con successo!\nStato: IN ATTESA di approvazione`;
+    showToast(msg, isOverCap ? 'error' : 'success');
+
+    resetForm();
+
+  } catch (err) {
+    hideLoading();
+    console.error('[submitExpense]', err);
+
+    if (err.status === 401) {
+      showToast('Sessione scaduta. Riautenticazione...', 'error');
+      setTimeout(refreshToken, 1500);
+    } else {
+      showToast(`❌ Errore nell'invio (${err.message || err.status}).\nRiprova tra un momento.`, 'error');
+    }
+  }
+
+  APP.submitting = false;
+  btnEl.innerHTML = 'Invia spesa';
+  validateForm(); // ricalcola stato pulsante
+}
+
+// ================================================================
+//  CARICA LE MIE SPESE DEL MESE CORRENTE
+// ================================================================
+async function loadMyExpenses() {
+  if (!APP.accessToken || !APP.user) return;
+
+  const meseAnno = getMeseAnno();
+  document.getElementById('month-title').textContent =
+    `${getMeseNome()} ${new Date().getFullYear()}`;
+
+  const listEl = document.getElementById('expenses-list');
+  listEl.innerHTML = `<div class="empty-state"><div class="es-icon">⏳</div><p>Caricamento...</p></div>`;
+
+  try {
+    // Leggi tutto il foglio dalla riga 2 (salta intestazione)
+    const range = `${CONFIG.SHEET_CURRENT}!A2:M`;
+    const data  = await sheetsRead(range);
+
+    if (!data.values || data.values.length === 0) {
+      renderEmptyState(); return;
+    }
+
+    // Filtra: email (col F = indice 5) + mese-anno (col M = indice 12)
+    const mine = data.values.filter(r =>
+      (r[5] || '').toLowerCase() === APP.user.email && r[12] === meseAnno
+    );
+
+    if (mine.length === 0) { renderEmptyState(); return; }
+
+    // Ordina per data spesa DESC (col G = indice 6)
+    mine.sort((a, b) => (b[6] || '') < (a[6] || '') ? -1 : 1);
+
+    // Statistiche
+    const total       = mine.reduce((s, r) => s + (parseFloat(r[9]) || 0), 0);
+    const countAuth   = mine.filter(r => r[11] === 'DA AUTORIZZARE').length;
+    const countApprv  = mine.filter(r => r[11] === 'APPROVATA').length;
+
+    document.getElementById('total-mese').textContent    = `€ ${total.toFixed(2).replace('.',',')}`;
+    document.getElementById('count-spese').textContent   = mine.length;
+    document.getElementById('count-auth').textContent    = countAuth;
+    document.getElementById('count-approved').textContent = countApprv;
+
+    listEl.innerHTML = mine.map(renderExpenseCard).join('');
+
+  } catch (err) {
+    console.error('[loadMyExpenses]', err);
+    listEl.innerHTML = `
+      <div class="alert alert-danger">
+        <span class="alert-icon">❌</span>
+        <div>Errore nel caricamento spese.
+          <button onclick="loadMyExpenses()"
+            style="background:none;border:none;color:var(--danger);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:13px;">
+            Riprova
+          </button>
+        </div>
+      </div>`;
+  }
+}
+
+// ================================================================
+//  RENDERIZZA UNA EXPENSE CARD
+// ================================================================
+function renderExpenseCard(row) {
+  // [0]ID [1]Timestamp [2]Nome [3]Cognome [4]Zona [5]Email
+  // [6]DataSpesa [7]Tipo [8]Km [9]Importo€ [10]Note [11]Stato [12]MeseAnno
+  const tipo    = row[7]  || '—';
+  const data    = formatDate(row[6] || '');
+  const km      = row[8]  ? `🚗 ${row[8]} km · ` : '';
+  const importo = parseFloat(row[9]) || 0;
+  const note    = row[10] || '';
+  const stato   = row[11] || 'IN ATTESA';
+  const rule    = RULES[tipo] || {};
+  const icon    = rule.icon || '💰';
+
+  const keyMap = {
+    'IN ATTESA':      { card: 's-in-attesa',     badge: 'b-in-attesa',     label: 'IN ATTESA' },
+    'DA AUTORIZZARE': { card: 's-da-autorizzare', badge: 'b-da-autorizzare', label: '⚠️ DA AUTORIZZARE' },
+    'APPROVATA':      { card: 's-approvata',      badge: 'b-approvata',     label: '✅ APPROVATA' },
+    'RIFIUTATA':      { card: 's-rifiutata',      badge: 'b-rifiutata',     label: '❌ RIFIUTATA' },
+  };
+  const k = keyMap[stato] || keyMap['IN ATTESA'];
+
+  return `
+    <div class="expense-card ${k.card}">
+      <div class="expense-left">
+        <div class="expense-type">${icon} ${tipo}</div>
+        <div class="expense-meta">📅 ${data} &nbsp;·&nbsp; ${km}€ ${importo.toFixed(2).replace('.',',')}</div>
+        ${note ? `<div class="expense-note" title="${escHtml(note)}">💬 ${escHtml(note)}</div>` : ''}
+      </div>
+      <div class="expense-right">
+        <div class="expense-amount">€&nbsp;${importo.toFixed(2).replace('.',',')}</div>
+        <div class="status-badge ${k.badge}">${k.label}</div>
+      </div>
+    </div>`;
+}
+
+function renderEmptyState() {
+  document.getElementById('total-mese').textContent    = '€ 0,00';
+  document.getElementById('count-spese').textContent   = '0';
+  document.getElementById('count-auth').textContent    = '0';
+  document.getElementById('count-approved').textContent = '0';
+  document.getElementById('expenses-list').innerHTML   = `
+    <div class="empty-state">
+      <div class="es-icon">📭</div>
+      <p>Nessuna spesa inserita questo mese.<br>
+         Usa il tab <strong>Nuova spesa</strong> per aggiungere la prima.</p>
+    </div>`;
+}
+
+// ================================================================
+//  RESET FORM
+// ================================================================
+function resetForm() {
+  document.getElementById('f-tipo').value    = '';
+  document.getElementById('f-importo').value = '';
+  document.getElementById('f-km').value      = '';
+  document.getElementById('f-note').value    = '';
+  document.getElementById('f-data').value    = new Date().toISOString().split('T')[0];
+
+  ['group-km','group-importo','importo-display','cap-alert','group-note','btn-submit']
+    .forEach(id => setVisible(id, false));
+
+  document.getElementById('form-alert').innerHTML = '';
+  document.getElementById('km-calc').style.display = 'none';
+}
+
+// ================================================================
+//  GOOGLE SHEETS API — SCRITTURA
+// ================================================================
+async function sheetsAppend(sheetName, row) {
+  const range = encodeURIComponent(`${sheetName}!A:M`);
+  const url   = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${APP.accessToken}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({ values: [row] }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw { status: res.status, message: body.error?.message || `HTTP ${res.status}` };
+  }
+
+  return res.json();
+}
+
+// ================================================================
+//  GOOGLE SHEETS API — LETTURA
+// ================================================================
+async function sheetsRead(range) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${encodeURIComponent(range)}`;
+
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${APP.accessToken}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw { status: res.status, message: body.error?.message || `HTTP ${res.status}` };
+  }
+
+  return res.json();
+}
+
+// ================================================================
+//  UTILITY
+// ================================================================
+function getMeseAnno() {
+  const d = new Date();
+  return `${String(d.getMonth() + 1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
+function getMeseNome() {
+  return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+          'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][new Date().getMonth()];
+}
+
+function formatDate(iso) {
+  const p = iso.split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+}
+
+function setVisible(id, show) {
+  document.getElementById(id).style.display = show ? '' : 'none';
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function alertHTML(type, icon, body) {
+  return `<div class="alert alert-${type}"><span class="alert-icon">${icon}</span><div>${body}</div></div>`;
+}
+
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || 'Caricamento...';
+  document.getElementById('loading-overlay').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+let _toastTimer;
+function showToast(msg, type = '') {
+  const el     = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `toast ${type}`;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+</script>
+
+</body>
+</html>
