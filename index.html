@@ -1093,12 +1093,12 @@ async function submitExpense() {
   const stato     = isOverCap ? 'DA AUTORIZZARE' : 'IN ATTESA';
   const id        = `SPE-${Date.now()}`;
   const timestamp = new Date().toISOString();
-  const meseAnno  = getMeseAnno();
   const { agent, user } = APP;
 
-  // Struttura riga Google Sheet
-  // A        B          C          D            E          F          G     H     I        J                    K     L      M
-  // ID | Timestamp | Nome | Cognome | Zona | Email | DataSpesa | Tipo | Km | Importo€ | Note | Stato | MeseAnno
+  // Struttura riga Google Sheet — foglio SPESE, colonne A→M
+  // A    B            C      D         E      F       G           H            I     J         K             L        M
+  // ID | DataInser. | Nome | Cognome | Zona | Email | DataSpesa | Tipologia | Km | Importo | Note agente | Stato | Note revisione
+  // Il mese si ricava dalla Data spesa. "Note revisione" (M) la compila Cristiana.
   const row = [
     id,
     timestamp,
@@ -1112,7 +1112,7 @@ async function submitExpense() {
     importo.toFixed(2),
     note,
     stato,
-    meseAnno,
+    '',            // M = Note revisione (compilata da Cristiana)
   ];
 
   APP.submitting = true;
@@ -1170,9 +1170,9 @@ async function loadMyExpenses() {
       renderEmptyState(); return;
     }
 
-    // Filtra: email (col F = indice 5) + mese-anno (col M = indice 12)
+    // Filtra: email (col F = indice 5) + mese ricavato dalla Data spesa (col G = indice 6)
     const mine = data.values.filter(r =>
-      (r[5] || '').toLowerCase() === APP.user.email && r[12] === meseAnno
+      (r[5] || '').toLowerCase() === APP.user.email && monthFromISO(r[6]) === meseAnno
     );
 
     if (mine.length === 0) { renderEmptyState(); return; }
@@ -1211,14 +1211,15 @@ async function loadMyExpenses() {
 //  RENDERIZZA UNA EXPENSE CARD
 // ================================================================
 function renderExpenseCard(row) {
-  // [0]ID [1]Timestamp [2]Nome [3]Cognome [4]Zona [5]Email
-  // [6]DataSpesa [7]Tipo [8]Km [9]Importo€ [10]Note [11]Stato [12]MeseAnno
+  // [0]ID [1]DataInser. [2]Nome [3]Cognome [4]Zona [5]Email
+  // [6]DataSpesa [7]Tipo [8]Km [9]Importo [10]Note agente [11]Stato [12]Note revisione
   const tipo    = row[7]  || '—';
   const data    = formatDate(row[6] || '');
   const km      = row[8]  ? `🚗 ${row[8]} km · ` : '';
   const importo = parseFloat(row[9]) || 0;
   const note    = row[10] || '';
   const stato   = row[11] || 'IN ATTESA';
+  const noteRev = row[12] || '';   // Note revisione (scritta da Cristiana)
   const rule    = RULES[tipo] || {};
   const icon    = rule.icon || '💰';
 
@@ -1236,6 +1237,7 @@ function renderExpenseCard(row) {
         <div class="expense-type">${icon} ${tipo}</div>
         <div class="expense-meta">📅 ${data} &nbsp;·&nbsp; ${km}€ ${importo.toFixed(2).replace('.',',')}</div>
         ${note ? `<div class="expense-note" title="${escHtml(note)}">💬 ${escHtml(note)}</div>` : ''}
+        ${noteRev ? `<div class="expense-note" style="color:var(--danger); font-style:normal;" title="${escHtml(noteRev)}">📝 Revisione: ${escHtml(noteRev)}</div>` : ''}
       </div>
       <div class="expense-right">
         <div class="expense-amount">€&nbsp;${importo.toFixed(2).replace('.',',')}</div>
@@ -1310,6 +1312,12 @@ function getMeseAnno() {
 function getMeseNome() {
   return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
           'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][new Date().getMonth()];
+}
+
+// "MM-YYYY" da una data "yyyy-MM-dd" (per filtrare per mese la Data spesa)
+function monthFromISO(iso) {
+  const m = (iso || '').toString().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[2]}-${m[1]}` : '';
 }
 
 function formatDate(iso) {
