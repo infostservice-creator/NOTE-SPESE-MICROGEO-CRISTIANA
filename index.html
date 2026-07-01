@@ -96,6 +96,40 @@
       font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 20px;
     }
 
+    /* ── CONNESSIONE SHEETS ────────────────────── */
+    #screen-connecting {
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      background: linear-gradient(160deg, #0d47a1 0%, #1565c0 45%, #1976d2 100%);
+      text-align: center;
+    }
+    #screen-connecting.active { display: flex !important; }
+
+    #screen-connecting .conn-avatar {
+      width: 88px; height: 88px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      border: 3px solid rgba(255,255,255,0.5);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 36px; font-weight: 700; color: white;
+      overflow: hidden; margin-bottom: 18px;
+    }
+    #screen-connecting .conn-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    #screen-connecting .conn-name { font-size: 22px; font-weight: 700; color: white; margin-bottom: 6px; }
+    #screen-connecting .conn-email { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 32px; }
+
+    #screen-connecting .conn-card {
+      background: white; border-radius: 20px;
+      padding: 28px 24px; width: 100%; max-width: 380px;
+      box-shadow: 0 10px 48px rgba(0,0,0,0.22);
+    }
+    #screen-connecting .conn-card p {
+      font-size: 14px; color: var(--text-muted); line-height: 1.55; margin-bottom: 20px;
+    }
+
     /* ── NON AUTORIZZATO ───────────────────────── */
     #screen-unauthorized {
       min-height: 100vh;
@@ -526,6 +560,21 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════
+     SCHERMATA: CONNESSIONE SHEETS
+════════════════════════════════════════════════════ -->
+<div id="screen-connecting" class="screen">
+  <div class="conn-avatar" id="conn-avatar">?</div>
+  <div class="conn-name"  id="conn-name">—</div>
+  <div class="conn-email" id="conn-email">—</div>
+  <div class="conn-card">
+    <p>Per accedere alle spese è necessario autorizzare l'accesso al foglio Google.<br>Clicca il pulsante qui sotto e accetta nella finestra che si apre.</p>
+    <button class="btn btn-primary" onclick="doConnectSheets()">
+      🔗 Autorizza e accedi
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
      SCHERMATA: NON AUTORIZZATO
 ════════════════════════════════════════════════════ -->
 <div id="screen-unauthorized" class="screen">
@@ -737,6 +786,7 @@ const AGENTS = {
   // ── Email Gmail personali (aggiungere qui) ────────────────────
   // 'nome.cognome@gmail.com': { nome: 'Nome', cognome: 'Cognome', zona: 'Zona' },
   'info.stservice@gmail.com':       { nome: 'Sergio',    cognome: 'Toccaceli', zona: 'Centro' },
+  'serradiosurf@gmail.com':         { nome: 'Sergio',    cognome: 'Toccaceli', zona: 'Centro' },
   'giampaolo.servodio@gmail.com':  { nome: 'Giampaolo', cognome: 'Servodio', zona: '—'      },
   'raimondiandrea9@gmail.com':     { nome: 'Andrea',    cognome: 'Raimondi', zona: '—'      },
   'damianifrancesco25@gmail.com':  { nome: 'Francesco', cognome: 'Damiani',  zona: 'Centro' },
@@ -816,7 +866,21 @@ function handleCredentialResponse(response) {
   APP.user  = { email, name: payload.name || '', picture: payload.picture || '' };
   APP.agent = AGENTS[email];
 
-  // Richiedi token OAuth per Sheets API
+  // Mostra schermata intermedia: l'utente deve cliccare per autorizzare Sheets.
+  // Non chiamiamo initAndRequestToken() direttamente perché il browser blocca
+  // popup aperti automaticamente (non da gesto utente diretto).
+  const avatarEl = document.getElementById('conn-avatar');
+  if (APP.user.picture) {
+    avatarEl.innerHTML = `<img src="${APP.user.picture}" alt="" referrerpolicy="no-referrer">`;
+  } else {
+    avatarEl.textContent = (APP.agent.nome[0] + APP.agent.cognome[0]).toUpperCase();
+  }
+  document.getElementById('conn-name').textContent  = `${APP.agent.nome} ${APP.agent.cognome}`;
+  document.getElementById('conn-email').textContent = email;
+  showScreen('connecting');
+}
+
+function doConnectSheets() {
   initAndRequestToken();
 }
 
@@ -886,6 +950,9 @@ function doLogout() {
   APP = { user: null, agent: null, accessToken: null, tokenClient: null, submitting: false };
   resetForm();
   switchTab('nuova');
+  document.getElementById('conn-avatar').innerHTML = '?';
+  document.getElementById('conn-name').textContent  = '—';
+  document.getElementById('conn-email').textContent = '—';
   showScreen('login');
 }
 
@@ -1401,4 +1468,11 @@ function showToast(msg, type = '') {
   const el     = document.getElementById('toast');
   el.textContent = msg;
   el.className   = `toast ${type}`;
-  el.
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+</script>
+
+</body>
+</html>
