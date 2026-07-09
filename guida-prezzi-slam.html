@@ -104,6 +104,18 @@
   .bk-row{display:flex;justify-content:space-between;gap:12px;font-size:.83rem;padding:3px 0}
   .bk-row .k{color:var(--result-muted)}
   .bk-row .v{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .bench{margin-top:14px;font-size:.8rem;line-height:1.45;border-top:1px solid rgba(255,255,255,.12);padding-top:12px;display:none}
+  .bench.show{display:block}
+  .bench .pill{
+    display:inline-block;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;font-weight:700;
+    padding:3px 10px;border-radius:999px;margin-bottom:6px;
+  }
+  .pill.dump{background:rgba(220,68,68,.18);color:#F08A8A;border:1px solid rgba(220,68,68,.45)}
+  .pill.bassa{background:rgba(230,170,60,.16);color:#E9BE72;border:1px solid rgba(230,170,60,.4)}
+  .pill.std{background:rgba(61,191,138,.14);color:#6FD4A8;border:1px solid rgba(61,191,138,.4)}
+  .pill.alta{background:rgba(240,118,43,.16);color:#F5A06A;border:1px solid rgba(240,118,43,.45)}
+  .bench .k{color:var(--result-muted)}
   .min-note{
     margin-top:14px;background:rgba(240,118,43,.14);border:1px solid rgba(240,118,43,.4);
     border-radius:6px;padding:9px 12px;font-size:.8rem;display:none;
@@ -206,6 +218,7 @@
         <div class="price-range" id="r-range">—</div>
         <div class="per-mq" id="r-permq">—</div>
         <div class="breakdown" id="r-breakdown"></div>
+        <div class="bench" id="r-bench"></div>
         <div class="min-note" id="r-minnote">Applicato il <strong>minimo di commessa</strong>: sotto questa soglia non conviene accettare il lavoro — copre trasferta, setup e elaborazione base.</div>
         <p class="disclaimer">Valori orientativi di mercato, non un tariffario ufficiale. Il prezzo finale dipende da trasferta, accessibilità, formato di consegna e dal valore che il tuo cliente ottiene dal dato.</p>
       </aside>
@@ -268,6 +281,7 @@
       </div>
     </div>
 
+    <p class="tnote">La colonna "Nuvola + elaborati 2D" è calibrata sul sondaggio italiano 2017–2025 (fascia di mercato dominante 2–3 €/mq, fascia alta oltre 3 €/mq in crescita — dettagli in "Metodo &amp; fonti").</p>
     <p class="tnote"><strong>Minimo di commessa: € 900.</strong> Qualunque sia la metratura, sotto questa cifra il lavoro non copre sopralluogo, trasferta, registrazione della nuvola ed elaborazione. È l'errore più comune di chi inizia: svendersi sui lavori piccoli.</p>
   </section>
 
@@ -283,8 +297,25 @@
       </ul>
       <p>Regole ricorrenti in tutte le fonti: la modellazione pesa circa il 70% del costo e la scansione in campo il 30%; il prezzo al mq scende con la scala; esiste sempre un minimo di commessa (€ 900–2.500) indipendente dai metri quadri.</p>
 
+      <h2>Il dato di campo italiano: sondaggio 2017–2025</h2>
+      <p>La fonte più preziosa è un sondaggio ripetuto in quattro edizioni (2017, 2021, 2023, 2025) sul gruppo Facebook <em>"Laser scanner &amp; droni"</em> (Strumentitopografici.com), con quasi 2.800 risposte cumulative, sui prezzi al mq delle <strong>restituzioni a fil di ferro</strong> da dati laser scanner:</p>
+      <div class="tablewrap" style="margin:14px 0">
+        <table style="min-width:480px">
+          <thead><tr><th>Fascia €/mq</th><th>2017</th><th>2021</th><th>2023</th><th>2025</th></tr></thead>
+          <tbody>
+            <tr><td>sotto 1 (dumping)</td><td class="num">0%</td><td class="num">0%</td><td class="num">1%</td><td class="num">2%</td></tr>
+            <tr><td>1 – 2</td><td class="num">34%</td><td class="num">10%</td><td class="num">17%</td><td class="num">7%</td></tr>
+            <tr><td>2 – 3 (standard)</td><td class="num">52%</td><td class="num">68%</td><td class="num">54%</td><td class="num">50%</td></tr>
+            <tr><td>oltre 3</td><td class="num">9%</td><td class="num">0%</td><td class="num">27%</td><td class="num">34%</td></tr>
+            <tr><td>5+ (ultra premium)</td><td class="num">4%</td><td class="num">0%</td><td class="num">0%</td><td class="num">0%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Lettura: la fascia 2–3 €/mq resta lo standard di mercato, ma il trend è chiaro — la fascia oltre 3 €/mq è passata dal 9% (2017) al 34% (2025), mentre la fascia 1–2 €/mq sta scomparendo. Il mercato riconosce sempre più valore al rilievo digitale: posizionarsi in fascia alta è sostenibile, svendersi no. Un 7% dei partecipanti prezza a tempo (20–30 €/ora), tariffa che raramente ripaga strumento e competenze. La colonna "Nuvola + elaborati 2D" del calcolatore è calibrata su questi dati; l'indicatore di posizionamento nel risultato usa le fasce del sondaggio 2025.</p>
+
       <h2>Fonti principali</h2>
       <ul>
+        <li>Sondaggio "Costo servizi di rilievo e restituzione dati laser scanner" ver. 2025 — gruppo Facebook <a href="https://www.strumentitopografici.it" target="_blank" rel="noopener">Laser scanner &amp; droni / Strumentitopografici.com</a> (2017–2025, ~2.800 risposte)</li>
         <li><a href="https://iscano.com/real-world-applications-laser-scanning-lidar/scan-to-bim-cost-guide/" target="_blank" rel="noopener">iScano — Scan to BIM Cost Guide 2026</a></li>
         <li><a href="https://www.thefuture3d.com/learn/bim-cost-per-square-foot/" target="_blank" rel="noopener">The Future 3D — BIM Cost per Square Foot 2026</a></li>
         <li><a href="https://www.thefuture3d.com/learn/3d-scanning-cost-guide/" target="_blank" rel="noopener">The Future 3D — 3D Scanning Cost Guide</a></li>
@@ -307,12 +338,14 @@
   "use strict";
 
   // ---- Dati: €/mq [min,max] a condizioni di riferimento (≈500 mq, standard, SLAM)
+  // Colonna d2 calibrata sul sondaggio italiano 2017-2025 (gruppo "Laser scanner & droni",
+  // Strumentitopografici.com): fascia dominante 2-3 €/mq, fascia alta 3+ in crescita (34% nel 2025).
   const TIPOLOGIE = [
-    {id:"res",  nome:"Residenziale",            hint:"appartamenti, ville",       prezzi:{nuvola:[1.5,3],  d2:[4,8],    bim3:[6,12],  bim4:[10,18]}},
-    {id:"cond", nome:"Condomini / facciate",     hint:"parti comuni, prospetti",   prezzi:{nuvola:[1,2.5],  d2:[3,6],    bim3:[5,10],  bim4:[8,15]}},
-    {id:"ind",  nome:"Industriale / commerciale",hint:"capannoni, retail",         prezzi:{nuvola:[0.5,1.5],d2:[1.5,3.5],bim3:[2.5,6], bim4:[5,12]}},
-    {id:"cult", nome:"Beni culturali / storico", hint:"chiese, palazzi vincolati", prezzi:{nuvola:[2,5],    d2:[6,12],   bim3:[10,20], bim4:[15,30]}},
-    {id:"infra",nome:"Cantieri / infrastrutture",hint:"SAL, gallerie, cave",       prezzi:{nuvola:[1,2.5],  d2:[2.5,5],  bim3:[4,8],   bim4:[8,15]}},
+    {id:"res",  nome:"Residenziale",            hint:"appartamenti, ville",       prezzi:{nuvola:[1.5,3],  d2:[2.5,4.5],bim3:[6,12],  bim4:[10,18]}},
+    {id:"cond", nome:"Condomini / facciate",     hint:"parti comuni, prospetti",   prezzi:{nuvola:[1,2.5],  d2:[2,4],    bim3:[5,10],  bim4:[8,15]}},
+    {id:"ind",  nome:"Industriale / commerciale",hint:"capannoni, retail",         prezzi:{nuvola:[0.5,1.5],d2:[1.2,2.5],bim3:[2.5,6], bim4:[5,12]}},
+    {id:"cult", nome:"Beni culturali / storico", hint:"chiese, palazzi vincolati", prezzi:{nuvola:[2,5],    d2:[4,8],    bim3:[10,20], bim4:[15,30]}},
+    {id:"infra",nome:"Cantieri / infrastrutture",hint:"SAL, gallerie, cave",       prezzi:{nuvola:[1,2.5],  d2:[2,3.5],  bim3:[4,8],   bim4:[8,15]}},
   ];
   const DELIVERABLES = [
     {id:"nuvola", nome:"Solo nuvola di punti",  hint:"registrata, E57/LAS"},
@@ -395,6 +428,23 @@
     ].map(([k,v])=>`<div class="bk-row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
 
     document.getElementById("r-minnote").classList.toggle("show", minApplied);
+
+    // Benchmark mercato italiano (sondaggio 2025 su restituzioni 2D a fil di ferro)
+    const bench = document.getElementById("r-bench");
+    if(del === "d2"){
+      const mid = (pMin+pMax)/2;
+      let cls, label, share;
+      if(mid < 1){ cls="dump"; label="Sotto mercato — dumping"; share="solo il 2% dei professionisti (prezzi insostenibili)"; }
+      else if(mid < 2){ cls="bassa"; label="Fascia bassa"; share="il 7% dei professionisti nel 2025, in via di estinzione"; }
+      else if(mid <= 3){ cls="std"; label="Fascia standard"; share="il 50% dei professionisti nel 2025"; }
+      else { cls="alta"; label="Fascia alta"; share="il 34% dei professionisti nel 2025, in forte crescita (era il 9% nel 2017)"; }
+      bench.innerHTML = `<span class="pill ${cls}">${label}</span><br>
+        <span class="k">Mercato italiano 2025 (sondaggio, 945 risposte): in questa fascia si colloca ${share}.</span>`;
+      bench.classList.add("show");
+    } else {
+      bench.classList.remove("show");
+      bench.innerHTML = "";
+    }
 
     // ROI: quante commesse "mediane" ripagano lo strumento
     const invest = Math.max(0, Number(document.getElementById("f-roi").value)||0);
