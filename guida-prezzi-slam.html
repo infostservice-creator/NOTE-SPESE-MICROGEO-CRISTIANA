@@ -281,6 +281,7 @@
       </div>
     </div>
 
+    <p class="tnote"><strong>LOD</strong> = Level of Development, il grado di dettaglio del modello BIM: LOD 200–300 è un modello con geometrie corrette adatto alla progettazione; LOD 350+ arriva al dettaglio esecutivo, impianti compresi. Più dettaglio = più ore di modellazione = prezzo al mq più alto (spiegazione completa in "Metodo &amp; fonti").</p>
     <p class="tnote">La colonna "Nuvola + elaborati 2D" è calibrata sul sondaggio italiano 2017–2025 (fascia di mercato dominante 2–3 €/mq, fascia alta oltre 3 €/mq in crescita — dettagli in "Metodo &amp; fonti").</p>
     <p class="tnote"><strong>Minimo di commessa: € 900.</strong> Qualunque sia la metratura, sotto questa cifra il lavoro non copre sopralluogo, trasferta, registrazione della nuvola ed elaborazione. È l'errore più comune di chi inizia: svendersi sui lavori piccoli.</p>
   </section>
@@ -292,10 +293,24 @@
       <p>Il mercato italiano dei rilievi non ha un tariffario pubblico: i prezzi si trovano quasi sempre "a corpo" o per fasce di metratura. Questa guida incrocia tre famiglie di fonti:</p>
       <ul>
         <li><strong>Listini e pagine prezzi di studi italiani</strong> di rilievo laser scanner (range a corpo per unità immobiliare, fasce di metratura);</li>
-        <li><strong>Guide di prezzo internazionali 2025–2026</strong> per 3D scanning e scan-to-BIM, molto più trasparenti, con tariffe per piede quadrato convertite in €/mq per livello LOD;</li>
+        <li><strong>Guide di prezzo internazionali 2025–2026</strong> per 3D scanning e scan-to-BIM, molto più trasparenti di quelle italiane. Nota: nei paesi anglosassoni i prezzi sono pubblicati in dollari per piede quadrato (square foot); li abbiamo <strong>convertiti tutti in euro al metro quadrato</strong> — in questa guida trovi esclusivamente €/mq;</li>
         <li><strong>Prezziari di committenza pubblica</strong> italiana (bandi e listini per rilievi su infrastrutture).</li>
       </ul>
       <p>Regole ricorrenti in tutte le fonti: la modellazione pesa circa il 70% del costo e la scansione in campo il 30%; il prezzo al mq scende con la scala; esiste sempre un minimo di commessa (€ 900–2.500) indipendente dai metri quadri.</p>
+
+      <h2>Glossario essenziale</h2>
+      <ul>
+        <li><strong>Nuvola di punti</strong> — il dato grezzo prodotto dallo scanner: milioni di punti misurati nello spazio che "fotografano" l'edificio in 3D. Si consegna registrata (le scansioni unite in un unico sistema di coordinate) in formati come E57 o LAS.</li>
+        <li><strong>Restituzione a fil di ferro</strong> — il disegno CAD 2D (piante, prospetti, sezioni) ricavato dalla nuvola di punti. È il deliverable più richiesto in Italia ed è quello a cui si riferisce il sondaggio italiano.</li>
+        <li><strong>Scan-to-BIM</strong> — dalla nuvola di punti si costruisce un modello 3D "intelligente" (Revit/IFC), dove muri, solai, porte e finestre sono oggetti con proprietà, non semplici linee.</li>
+        <li><strong>LOD (Level of Development)</strong> — indica quanto è dettagliato il modello BIM. In pratica:
+          <ul>
+            <li><strong>LOD 200</strong> — volumi e geometrie approssimate: dice "qui c'è un muro", senza specificarne stratigrafia e dettagli;</li>
+            <li><strong>LOD 300</strong> — elementi con geometria precisa e dimensioni reali: adatto alla progettazione;</li>
+            <li><strong>LOD 350–400</strong> — dettaglio esecutivo: comprese le connessioni tra elementi e gli impianti (elettrico, idraulico, meccanico — in gergo "MEP"). È il livello più costoso da modellare, ed è per questo che si paga di più.</li>
+          </ul>
+        Più alto il LOD, più ore di modellazione servono: ecco perché il prezzo al mq cresce con il LOD.</li>
+      </ul>
 
       <h2>Il dato di campo italiano: sondaggio 2017–2025</h2>
       <p>La fonte più preziosa è un sondaggio ripetuto in quattro edizioni (2017, 2021, 2023, 2025) sul gruppo Facebook <em>"Laser scanner &amp; droni"</em> (Strumentitopografici.com), con quasi 2.800 risposte cumulative, sui prezzi al mq delle <strong>restituzioni a fil di ferro</strong> da dati laser scanner:</p>
@@ -350,8 +365,8 @@
   const DELIVERABLES = [
     {id:"nuvola", nome:"Solo nuvola di punti",  hint:"registrata, E57/LAS"},
     {id:"d2",     nome:"Nuvola + elaborati 2D", hint:"piante, prospetti, sezioni"},
-    {id:"bim3",   nome:"Scan-to-BIM LOD 200–300", hint:"modello Revit/IFC"},
-    {id:"bim4",   nome:"Scan-to-BIM LOD 350+",  hint:"dettaglio esecutivo, MEP"},
+    {id:"bim3",   nome:"Scan-to-BIM LOD 200–300", hint:"modello 3D BIM semplificato"},
+    {id:"bim4",   nome:"Scan-to-BIM LOD 350+",  hint:"modello 3D dettagliato + impianti"},
   ];
   const SCALA = [
     {lim:150,  label:"fino a 150 mq",        m:1.3},
