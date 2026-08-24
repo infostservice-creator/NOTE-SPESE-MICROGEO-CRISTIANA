@@ -587,6 +587,7 @@
             <option value="Cena">🌙  Cena</option>
             <option value="Pernottamento">🏨  Pernottamento</option>
             <option value="Km percorsi">🚗  Km percorsi</option>
+            <option value="Carburante">⛽  Carburante</option>
             <option value="Varie">📦  Varie</option>
             <option value="Pedaggi">🛣️  Pedaggi / Autostrada</option>
           </select>
@@ -748,6 +749,7 @@ const RULES = {
   'Cena':          { cap: 45,   kmRate: null, noteRule: 'over_cap', icon: '🌙',  capLabel: '€ 45,00' },
   'Pernottamento': { cap: 130,  kmRate: null, noteRule: 'over_cap', icon: '🏨',  capLabel: '€ 130,00' },
   'Km percorsi':   { cap: null, kmRate: 0.50, noteRule: 'never',    icon: '🚗',  capLabel: '€ 0,50/km' },
+  'Carburante':    { cap: null, kmRate: null, noteRule: 'always',   icon: '⛽',  capLabel: 'Nessun tetto' },
   'Varie':         { cap: null, kmRate: null, noteRule: 'always',   icon: '📦',  capLabel: 'Nessun tetto' },
   'Pedaggi':       { cap: null, kmRate: null, noteRule: 'always',   icon: '🛣️', capLabel: 'Nessun tetto' },
 };
