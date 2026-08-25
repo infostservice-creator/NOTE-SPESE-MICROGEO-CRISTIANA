@@ -564,6 +564,9 @@
     <div class="tab" id="tab-btn-mie" onclick="switchTab('mie')">
       <span class="tab-icon">📋</span>Le mie spese
     </div>
+    <div class="tab" id="tab-btn-scontrini" onclick="switchTab('scontrini')">
+      <span class="tab-icon">📎</span>Scontrini
+    </div>
   </nav>
 
   <!-- Contenuto -->
@@ -692,6 +695,23 @@
 
     </div><!-- /tab-mie -->
 
+    <!-- ── TAB: SCONTRINI ── -->
+    <div id="tab-scontrini" class="tab-content">
+      <div class="form-card">
+        <h3>📎 Carica i tuoi scontrini</h3>
+        <p style="margin:0 0 16px; opacity:.8; line-height:1.5;">
+          Qui puoi caricare le foto degli scontrini delle tue spese. La cartella è privata:
+          solo tu e l'amministrazione potete vederla — i tuoi colleghi non hanno accesso.
+        </p>
+        <button class="btn btn-primary" onclick="apriCartellaScontrini()">
+          📎 Apri la tua cartella scontrini
+        </button>
+        <p style="margin:16px 0 0; font-size:13px; opacity:.65;">
+          Si apre Google Drive in una nuova scheda: trascina lì le foto (o usa "+ Nuovo → Caricamento file").
+        </p>
+      </div>
+    </div><!-- /tab-scontrini -->
+
   </div><!-- /content -->
 </div><!-- /screen-app -->
 
@@ -739,6 +759,35 @@ const AGENTS = {
   'giampaolo.servodio@gmail.com':  { nome: 'Giampaolo', cognome: 'Servodio', zona: '—'      },
   'raimondiandrea9@gmail.com':     { nome: 'Andrea',    cognome: 'Raimondi', zona: '—'      },
   'damianifrancesco25@gmail.com':  { nome: 'Francesco', cognome: 'Damiani',  zona: 'Centro' },
+};
+
+// ================================================================
+//  CARTELLE DRIVE SCONTRINI — una per agente (creata su Drive di Sergio,
+//  condivisa in sola modifica SOLO con l'email dell'agente stesso)
+// ================================================================
+const RECEIPT_FOLDERS = {
+  'd.battaglia@microgeo.it':      'https://drive.google.com/drive/folders/12s_H4kpXnXR-zW2w0Ea4ubvZaujz_Fgz',
+  'a.carraro@microgeo.it':        'https://drive.google.com/drive/folders/1yOb1fyO5FJwAlOIGeQBSnEeDAs9HyP-0',
+  'c.ferrara@microgeo.it':        'https://drive.google.com/drive/folders/1YBNQK65gt6HvKG0AwqRruH3cWBH5WJXS',
+  'm.friggi@microgeo.it':         'https://drive.google.com/drive/folders/1POXRH-ogMkznjTCUhLcFQNtbl3h5tUjP',
+  'd.guidotti@microgeo.it':       'https://drive.google.com/drive/folders/1ZIyAcPIUiYfWWvu7PxISnt9qlVlkRBKY',
+  'i.racu@microgeo.it':           'https://drive.google.com/drive/folders/1wTOXOT8TZ84TNeqQuubDXzGfi3lpIAdz',
+  's.solda@microgeo.it':          'https://drive.google.com/drive/folders/1UEdp5p21HxL1gw9DGYDUJSG3eSDZ8zH7',
+  'a.deamicis@microgeo.it':       'https://drive.google.com/drive/folders/1SLGzLC9igYL6QHO0kcRG8JBmAJFgwjmT',
+  'm.costantino@microgeo.it':     'https://drive.google.com/drive/folders/1lNds237_CyzwSHZukVFHcwZW7Wx1YdxV',
+  'f.conti@microgeo.it':          'https://drive.google.com/drive/folders/1j8Aw7danEf2z91MLYtmhAjbMexn_Xinz',
+  'g.palmer@microgeo.it':         'https://drive.google.com/drive/folders/1T2JGUmJaZDMEUqg1xQgAnxfu9CgwCtB7',
+  'g.russo@microgeo.it':          'https://drive.google.com/drive/folders/1BhRirj9OPlJLqWnCFdH2a-h56cI5j2Jk',
+  // Agenti Dynatech — stessa cartella indipendentemente dall'email usata per accedere
+  'f.damiani@dynatech.it':        'https://drive.google.com/drive/folders/1MSK1nnCQMKMfNqYWIgGEiDJYNmfwXHVL',
+  'damianifrancesco25@gmail.com': 'https://drive.google.com/drive/folders/1MSK1nnCQMKMfNqYWIgGEiDJYNmfwXHVL',
+  's.toccaceli@dynatech.it':      'https://drive.google.com/drive/folders/1ASvnKtv7qsLarf-CxELSek9PftwgRsK5',
+  'serradiosurf@gmail.com':       'https://drive.google.com/drive/folders/1ASvnKtv7qsLarf-CxELSek9PftwgRsK5',
+  'info.stservice@gmail.com':     'https://drive.google.com/drive/folders/1ASvnKtv7qsLarf-CxELSek9PftwgRsK5',
+  'g.servodio@dynatech.it':       'https://drive.google.com/drive/folders/1KrQc8zoHJIQT3R-6o5F6Pz3oWSLBdkTl',
+  'giampaolo.servodio@gmail.com': 'https://drive.google.com/drive/folders/1KrQc8zoHJIQT3R-6o5F6Pz3oWSLBdkTl',
+  'a.raimondi@dynatech.it':       'https://drive.google.com/drive/folders/1d0BGY9VPoGkrusFo78wdoWu5BcckIblr',
+  'raimondiandrea9@gmail.com':    'https://drive.google.com/drive/folders/1d0BGY9VPoGkrusFo78wdoWu5BcckIblr',
 };
 
 // ================================================================
@@ -862,11 +911,21 @@ function showScreen(name) {
 }
 
 function switchTab(name) {
-  ['nuova', 'mie'].forEach(t => {
+  ['nuova', 'mie', 'scontrini'].forEach(t => {
     document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
     document.getElementById(`tab-btn-${t}`).classList.toggle('active', t === name);
   });
   if (name === 'mie') loadMyExpenses();
+}
+
+// Apre in una nuova scheda la cartella Drive scontrini dell'agente loggato
+function apriCartellaScontrini() {
+  const url = APP.user && RECEIPT_FOLDERS[APP.user.email];
+  if (!url) {
+    alert('Cartella scontrini non ancora disponibile per questo account. Contatta l\'amministrazione.');
+    return;
+  }
+  window.open(url, '_blank');
 }
 
 // ================================================================
