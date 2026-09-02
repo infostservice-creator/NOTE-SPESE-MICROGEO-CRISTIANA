@@ -664,11 +664,11 @@
       <!-- Riepilogo numerico -->
       <div class="summary-grid">
         <div class="summary-card">
-          <div class="summary-label">Totale mese</div>
+          <div class="summary-label">Totale complessivo</div>
           <div class="summary-value" id="total-mese">—</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">N. spese</div>
+          <div class="summary-label">N. spese totali</div>
           <div class="summary-value" id="count-spese">—</div>
         </div>
         <div class="summary-card">
@@ -1233,28 +1233,26 @@ async function submitExpense() {
 }
 
 // ================================================================
-//  CARICA LE MIE SPESE DEL MESE CORRENTE
+//  CARICA TUTTE LE MIE SPESE (storico completo, non solo mese corrente)
 // ================================================================
 async function loadMyExpenses() {
   if (!APP.user) return;
 
-  const meseAnno = getMeseAnno();
-  document.getElementById('month-title').textContent =
-    `${getMeseNome()} ${new Date().getFullYear()}`;
+  document.getElementById('month-title').textContent = 'Storico completo';
 
   const listEl = document.getElementById('expenses-list');
   listEl.innerHTML = `<div class="empty-state"><div class="es-icon">⏳</div><p>Caricamento...</p></div>`;
 
   try {
-    const data = await apiPost('read', { meseAnno });
+    const data = await apiPost('read', {});
 
     if (!data.values || data.values.length === 0) {
       renderEmptyState(); return;
     }
 
-    // Filtra: email (col F = indice 5) + mese ricavato dalla Data spesa (col G = indice 6)
+    // Filtra solo per email (col F = indice 5): mostra TUTTE le spese, di tutti i mesi
     const mine = data.values.filter(r =>
-      (r[5] || '').toLowerCase() === APP.user.email && monthFromISO(r[6]) === meseAnno
+      (r[5] || '').toLowerCase() === APP.user.email
     );
 
     if (mine.length === 0) { renderEmptyState(); return; }
@@ -1380,7 +1378,7 @@ function renderEmptyState() {
   document.getElementById('expenses-list').innerHTML   = `
     <div class="empty-state">
       <div class="es-icon">📭</div>
-      <p>Nessuna spesa inserita questo mese.<br>
+      <p>Nessuna spesa inserita finora.<br>
          Usa il tab <strong>Nuova spesa</strong> per aggiungere la prima.</p>
     </div>`;
 }
