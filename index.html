@@ -810,6 +810,9 @@ let APP = {
   user:      null,   // { email, name, picture }
   agent:     null,   // dati da AGENTS
   submitting: false,
+  myExpenses: [],          // ultima lista caricata in "Le mie spese"
+  editingId:  null,        // ID della spesa in modifica (null = nuovo inserimento)
+  editingOriginalRow: null,
 };
 
 // ================================================================
@@ -1176,22 +1179,40 @@ async function submitExpense() {
     '',            // M = Note revisione (compilata da Cristiana)
   ];
 
+  const isEditing = !!APP.editingId;
+  if (isEditing) {
+    // In modifica: mantieni ID, data inserimento, stato e note revisione originali
+    row[0]  = APP.editingOriginalRow[0];
+    row[1]  = APP.editingOriginalRow[1];
+    row[11] = APP.editingOriginalRow[11];
+    row[12] = APP.editingOriginalRow[12];
+  }
+
   APP.submitting = true;
   const btnEl = document.getElementById('btn-submit');
-  btnEl.innerHTML = '<span class="spinner"></span> Invio in corso...';
+  btnEl.innerHTML = `<span class="spinner"></span> ${isEditing ? 'Salvataggio...' : 'Invio in corso...'}`;
   btnEl.disabled  = true;
-  showLoading('Invio spesa in corso...');
+  showLoading(isEditing ? 'Salvataggio modifica in corso...' : 'Invio spesa in corso...');
 
   try {
-    await apiPost('append', { row });
+    if (isEditing) {
+      await apiPost('update', { id: row[0], row });
+    } else {
+      await apiPost('append', { row });
+    }
 
     hideLoading();
 
-    const msg = isOverCap
-      ? `✅ Spesa inviata\n⚠️ Stato: DA AUTORIZZARE\n(importo oltre il tetto di €${rule.cap})`
-      : `✅ Spesa inviata con successo!\nStato: IN ATTESA di approvazione`;
-    showToast(msg, isOverCap ? 'error' : 'success');
+    const msg = isEditing
+      ? '✅ Spesa modificata con successo!'
+      : (isOverCap
+          ? `✅ Spesa inviata\n⚠️ Stato: DA AUTORIZZARE\n(importo oltre il tetto di €${rule.cap})`
+          : `✅ Spesa inviata con successo!\nStato: IN ATTESA di approvazione`);
+    showToast(msg, isOverCap && !isEditing ? 'error' : 'success');
 
+    APP.editingId = null;
+    APP.editingOriginalRow = null;
+    btnEl.textContent = 'Invia spesa';
     resetForm();
 
   } catch (err) {
@@ -1240,6 +1261,8 @@ async function loadMyExpenses() {
 
     // Ordina per data spesa DESC (col G = indice 6)
     mine.sort((a, b) => (b[6] || '') < (a[6] || '') ? -1 : 1);
+
+    APP.myExpenses = mine; // salvato per permettere la modifica (editExpense)
 
     // Statistiche
     const total       = mine.reduce((s, r) => s + (parseFloat(r[9]) || 0), 0);
@@ -1291,6 +1314,7 @@ function renderExpenseCard(row) {
     'RIFIUTATA':      { card: 's-rifiutata',      badge: 'b-rifiutata',     label: '❌ RIFIUTATA' },
   };
   const k = keyMap[stato] || keyMap['IN ATTESA'];
+  const canEdit = stato === 'IN ATTESA';
 
   return `
     <div class="expense-card ${k.card}">
@@ -1299,12 +1323,53 @@ function renderExpenseCard(row) {
         <div class="expense-meta">📅 ${data} &nbsp;·&nbsp; ${km}€ ${importo.toFixed(2).replace('.',',')}</div>
         ${note ? `<div class="expense-note" title="${escHtml(note)}">💬 ${escHtml(note)}</div>` : ''}
         ${noteRev ? `<div class="expense-note" style="color:var(--danger); font-style:normal;" title="${escHtml(noteRev)}">📝 Revisione: ${escHtml(noteRev)}</div>` : ''}
+        ${canEdit ? `<button class="btn-refresh" style="margin-top:8px;" onclick="editExpense('${row[0]}')">✏️ Modifica</button>` : ''}
       </div>
       <div class="expense-right">
         <div class="expense-amount">€&nbsp;${importo.toFixed(2).replace('.',',')}</div>
         <div class="status-badge ${k.badge}">${k.label}</div>
       </div>
     </div>`;
+}
+
+// ================================================================
+//  MODIFICA SPESA — apre "Nuova spesa" precompilata (solo se IN ATTESA)
+// ================================================================
+function editExpense(id) {
+  const row = (APP.myExpenses || []).find(r => r[0] === id);
+  if (!row) { showToast('Spesa non trovata, ricarica la pagina e riprova.', 'error'); return; }
+  if ((row[11] || 'IN ATTESA') !== 'IN ATTESA') {
+    showToast('Questa spesa è già stata revisionata da Cristiana e non può più essere modificata.', 'error');
+    return;
+  }
+
+  APP.editingId = id;
+  APP.editingOriginalRow = row;
+
+  switchTab('nuova');
+
+  document.getElementById('f-tipo').value = row[7] || '';
+  onTipoChange(); // resetta e mostra i campi giusti per la tipologia
+
+  document.getElementById('f-data').value    = row[6] || '';
+  if (row[8]) document.getElementById('f-km').value = row[8];
+  if (row[9]) document.getElementById('f-importo').value = row[9];
+  document.getElementById('f-note').value    = row[10] || '';
+
+  onKmChange();
+  onImportoChange();
+  validateForm();
+
+  document.getElementById('btn-submit').textContent = 'Salva modifica';
+  document.getElementById('form-alert').innerHTML = alertHTML('info', '✏️',
+    'Stai modificando una spesa già inviata. <a href="#" onclick="annullaModifica();return false;" style="text-decoration:underline;">Annulla</a>');
+}
+
+function annullaModifica() {
+  APP.editingId = null;
+  APP.editingOriginalRow = null;
+  document.getElementById('btn-submit').textContent = 'Invia spesa';
+  resetForm();
 }
 
 function renderEmptyState() {
@@ -1324,6 +1389,9 @@ function renderEmptyState() {
 //  RESET FORM
 // ================================================================
 function resetForm() {
+  APP.editingId = null;
+  APP.editingOriginalRow = null;
+  document.getElementById('btn-submit').textContent = 'Invia spesa';
   document.getElementById('f-tipo').value    = '';
   document.getElementById('f-importo').value = '';
   document.getElementById('f-km').value      = '';
