@@ -1154,7 +1154,7 @@ async function submitExpense() {
   }
 
   const isOverCap = rule.cap && importo > rule.cap;
-  const stato     = isOverCap ? 'DA AUTORIZZARE' : 'IN ATTESA';
+  const stato     = isOverCap ? 'DA AUTORIZZARE' : 'APPROVATA';
   const id        = `SPE-${Date.now()}`;
   const timestamp = new Date().toISOString();
   const { agent, user } = APP;
@@ -1207,7 +1207,7 @@ async function submitExpense() {
       ? '✅ Spesa modificata con successo!'
       : (isOverCap
           ? `✅ Spesa inviata\n⚠️ Stato: DA AUTORIZZARE\n(importo oltre il tetto di €${rule.cap})`
-          : `✅ Spesa inviata con successo!\nStato: IN ATTESA di approvazione`);
+          : `✅ Spesa inviata e approvata automaticamente!\nStato: APPROVATA`);
     showToast(msg, isOverCap && !isEditing ? 'error' : 'success');
 
     APP.editingId = null;
