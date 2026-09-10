@@ -51,6 +51,9 @@ const ALLOWED_EMAILS = [
   'raimondiandrea9@gmail.com', 'damianifrancesco25@gmail.com',
 ];
 
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo?id_token=';
+const OAUTH_CLIENT_ID = '151510373742-2s9c58nvrfd3j79jspc83cpgkujkir4m.apps.googleusercontent.com';
+
 // ── Risposta JSON ────────────────────────────────────────────────
 function jsonOk(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -65,7 +68,26 @@ function jsonError(msg, code) {
 function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents);
-    var email   = (payload.email || '').toLowerCase().trim();
+
+    if (!payload.idToken) {
+      return jsonError('Token mancante, effettua di nuovo il login', 401);
+    }
+
+    var verified;
+    try {
+      var resp = UrlFetchApp.fetch(GOOGLE_TOKENINFO_URL + encodeURIComponent(payload.idToken), {
+        muteHttpExceptions: true
+      });
+      verified = JSON.parse(resp.getContentText());
+    } catch (tokenErr) {
+      return jsonError('Impossibile verificare il token, riprova', 401);
+    }
+
+    if (!verified || verified.error || verified.aud !== OAUTH_CLIENT_ID) {
+      return jsonError('Sessione scaduta o non valida, effettua di nuovo il login', 401);
+    }
+
+    var email = (verified.email || '').toLowerCase().trim();
 
     if (ALLOWED_EMAILS.indexOf(email) === -1) {
       return jsonError('Email non autorizzata: ' + email, 403);
