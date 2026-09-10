@@ -863,6 +863,7 @@ function handleCredentialResponse(response) {
     return;
   }
 
+  APP.idToken = response.credential;
   APP.user  = { email, name: payload.name || '', picture: payload.picture || '' };
   APP.agent = AGENTS[email];
   enterApp();
@@ -1219,10 +1220,7 @@ async function submitExpense() {
     hideLoading();
     console.error('[submitExpense]', err);
 
-    if (err.status === 401) {
-      showToast('Sessione scaduta. Riautenticazione...', 'error');
-      setTimeout(refreshToken, 1500);
-    } else {
+    if (err.status !== 401) {
       showToast(`❌ Errore nell'invio (${err.message || err.status}).\nRiprova tra un momento.`, 'error');
     }
   }
@@ -1411,7 +1409,7 @@ function resetForm() {
 // ================================================================
 async function apiPost(action, payload) {
   if (!CONFIG.SCRIPT_URL) throw new Error('SCRIPT_URL non configurato');
-  const body = JSON.stringify({ action, email: APP.user.email, ...payload });
+  const body = JSON.stringify({ action, email: APP.user.email, idToken: APP.idToken, ...payload });
   const res  = await fetch(CONFIG.SCRIPT_URL, {
     method:   'POST',
     headers:  { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1420,7 +1418,15 @@ async function apiPost(action, payload) {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
+  if (data.error) {
+    if (data.code === 401) {
+      showToast('Sessione scaduta, effettua di nuovo l\'accesso...', 'error');
+      setTimeout(doLogout, 1500);
+    }
+    const err = new Error(data.error);
+    err.status = data.code;
+    throw err;
+  }
   return data;
 }
 
