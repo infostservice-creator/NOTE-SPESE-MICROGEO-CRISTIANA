@@ -95,6 +95,7 @@ function doPost(e) {
 
     if (payload.action === 'append') return handleAppend(payload);
     if (payload.action === 'read')   return handleRead(email, payload.meseAnno);
+    if (payload.action === 'update') return handleUpdate(payload, email);
 
     return jsonError('Azione non riconosciuta: ' + payload.action);
   } catch (err) {
@@ -156,6 +157,73 @@ function getFirstEmptyDataRow(sheet) {
     if (ids[i][0] === '' || ids[i][0] === null) return FIRST_DATA_ROW + i;
   }
   return lastRow + 1;
+}
+
+// ================================================================
+//  UPDATE — modifica una spesa esistente (solo se ancora "IN ATTESA")
+// ================================================================
+function handleUpdate(payload, email) {
+  var id = payload.id;
+  var newRow = payload.row;
+  if (!id) return jsonError('ID mancante', 400);
+  if (!newRow || newRow.length < N_COL) return jsonError('Riga non valida', 400);
+  newRow = newRow.slice(0, N_COL);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheetSpese = ss.getSheetByName(SHEET_SPESE);
+    if (!sheetSpese) return jsonError('Foglio "' + SHEET_SPESE + '" non trovato', 404);
+
+    var rowIndex = findRowById_(sheetSpese, id);
+    if (rowIndex === -1) {
+      return jsonError('Spesa non trovata (potrebbe essere già stata azzerata a fine mese)', 404);
+    }
+
+    var existing = sheetSpese.getRange(rowIndex, 1, 1, N_COL).getValues()[0];
+    var existingEmail = (existing[5] || '').toString().toLowerCase().trim();
+    if (existingEmail !== email) {
+      return jsonError('Non autorizzato a modificare questa spesa', 403);
+    }
+
+    var stato = (existing[11] || '').toString().toUpperCase().trim();
+    if (stato && stato !== 'IN ATTESA') {
+      return jsonError('Questa spesa è già stata revisionata e non può più essere modificata', 409);
+    }
+
+    newRow[0]  = existing[0];
+    newRow[1]  = existing[1];
+    newRow[11] = existing[11];
+    newRow[12] = existing[12];
+
+    sheetSpese.getRange(rowIndex, 1, 1, N_COL).setValues([newRow]);
+
+    var sheetStorico = ss.getSheetByName(SHEET_STORICO);
+    if (sheetStorico) {
+      var storicoRowIndex = findRowById_(sheetStorico, id);
+      if (storicoRowIndex !== -1) {
+        sheetStorico.getRange(storicoRowIndex, 1, 1, N_COL).setValues([newRow]);
+      }
+    }
+
+    SpreadsheetApp.flush();
+    try { aggiornaRiepilogoMensile(ss); } catch (e2) {}
+
+    return jsonOk({ success: true, id: id });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function findRowById_(sheet, id) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < FIRST_DATA_ROW) return -1;
+  var ids = sheet.getRange(FIRST_DATA_ROW, 1, lastRow - FIRST_DATA_ROW + 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) {
+    if (ids[i][0] && ids[i][0].toString() === id.toString()) return FIRST_DATA_ROW + i;
+  }
+  return -1;
 }
 
 // ================================================================
