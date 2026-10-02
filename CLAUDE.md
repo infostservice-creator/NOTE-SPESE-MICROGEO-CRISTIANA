@@ -10,7 +10,6 @@ No build system, package manager, linter or tests.
 
 - `index.html` — single-file frontend (HTML + CSS + inline JS), hosted on GitHub Pages. Google Identity Services login, "Nuova spesa" form, "Le mie spese" list, "Scontrini" tab (opens the agent's private Drive folder).
 - `gas/Codice.js` — **the only reference for the Apps Script backend** (Web App bound to the sheet), synced with clasp. `gas/.clasp.json` holds the script ID; `gas/appsscript.json` is the manifest (V8, Europe/Rome, executes as the deploying user, access anyone).
-- `bozza-update.gs` — **not deployed, not a reference.** Old draft kept only as the source of `handleUpdate` / `findRowById_` (and the `'update'` dispatch line in `doPost`) for "rilascio 2". Do not edit it for other purposes or copy anything else from it.
 
 `SETUP.md` is the detailed architecture guide (in Italian); its manual copy-paste deploy steps are superseded by the flow below. `index_backup_*.html` files are gitignored local snapshots.
 
@@ -34,7 +33,8 @@ index.html ──POST JSON (text/plain)──► Apps Script doPost ──► Go
 ```
 
 - **Request flow**: `apiPost(action, payload)` in `index.html` sends `{action, email, idToken, ...}` as `text/plain` (avoids CORS preflight). `doPost` verifies `idToken` via Google's tokeninfo endpoint (checks `aud === OAUTH_CLIENT_ID`), takes the email **from the verified token**, not the payload, checks it against `ALLOWED_EMAILS`, then dispatches to `handleAppend` / `handleRead`. Errors return `{error, code}` with HTTP 200; the frontend treats `code === 401` as session expired and logs out.
-- **`update` is not live**: the deployed backend rejects it ("Azione non riconosciuta"). The "Modifica" button in `index.html` is hidden by `MODIFICA_ATTIVA = false`; rilascio 2 enables both together (backend source: `bozza-update.gs`). Don't enable either unless asked.
+- **No edit of saved expenses**: there is no `update` action in the backend and no "Modifica" button in `index.html` (removed by decision in rilascio 2). An old draft of `handleUpdate` exists in git history (`bozza-update.gs`, deleted).
+- **Over-cap confirmation**: `submitExpense()` shows a confirm pop-up (`askConfirm`) before saving when `importo > RULES[tipo].cap`; "Annulla" keeps the form filled for correction.
 - **Sheets** (headers on row 3, data from row 4 — `FIRST_DATA_ROW`): `SPESE` (current month only, cleared monthly via menu), `STORICO ANNUALE` (permanent; every append is written to both), `RIEPILOGO MENSILE` (fixed layout of agent rows + "TOTALE GENERALE", recomputed by `aggiornaRiepilogoMensile` from all of `SPESE`), `ANAGRAFICA` (not touched by code). "Le mie spese" reads `STORICO ANNUALE` via `handleRead`: filtered by token email and by month of **DataInserimento (col B)** in the sheet's timezone; the response is `{values, meseAnno, mesi}` (`mesi` from `PRIMO_MESE_LETTURA` = 09-2026 to the current month), and the frontend month dropdown preselects the returned `meseAnno`. Stats are computed client-side; the total excludes `RIFIUTATA`. So agent totals intentionally differ from `RIEPILOGO MENSILE` (which uses all of `SPESE`).
 - **Row schema A→M (13 cols)** must stay identical in `submitExpense()` (`index.html`) and `gas/Codice.js`: ID, DataInserimento (UTC ISO string from the browser), Nome, Cognome, Zona, Email, DataSpesa (`yyyy-MM-dd`), Tipologia, Km, Importo (must be a **number**, not a string — Italian locale misreads `"12.00"` as a time), Note agente, Stato, Note revisione. Month is never stored as a column.
 - **Stati**: `IN ATTESA`, `DA AUTORIZZARE`, `APPROVATA`, `RIFIUTATA`. The frontend sets `APPROVATA` when within the cap and `DA AUTORIZZARE` when over it (`RULES` in `index.html`, per "Circolare n.18/26"). Only Cristiana edits Stato (L) and Note revisione (M) in the sheet; the `onEdit` trigger propagates those to `STORICO ANNUALE` by ID (only the first row of a multi-row edit) and recomputes the summary.
@@ -61,3 +61,4 @@ No automated tests. Verify by opening `index.html` (served over http(s) from an 
 - valutare blocco spese più vecchie di 30 giorni
 - il database passerà da Google Sheet a vTiger
 - togliere email agenti e link Drive da index.html (con vTiger)
+- handleAppend si fida di stato, nome ed email inviati dalla pagina: forzarli lato server (con vTiger o prima)
