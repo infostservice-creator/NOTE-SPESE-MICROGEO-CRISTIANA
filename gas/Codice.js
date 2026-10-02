@@ -103,7 +103,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return jsonOk({ status: 'ok', version: '3.0' });
+  return jsonOk({ status: 'ok', version: '3.1' });
 }
 
 // ================================================================
@@ -159,23 +159,34 @@ function getFirstEmptyDataRow(sheet) {
 }
 
 // ================================================================
-//  READ — spese di un agente per il mese corrente
+//  READ — spese di un agente per un mese, lette dallo STORICO ANNUALE
+//  Mese = data di inserimento (col B) nel fuso del foglio, formato "MM-YYYY".
+//  Senza meseAnno valido usa il mese corrente.
+//  Risposta: { values, meseAnno (mese usato), mesi (da PRIMO_MESE_LETTURA
+//  al mese corrente, dal più recente) }
 // ================================================================
+const PRIMO_MESE_LETTURA = '09-2026';
+
 function handleRead(email, meseAnno) {
   var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName(SHEET_SPESE);
-  if (!sheet) return jsonError('Foglio "' + SHEET_SPESE + '" non trovato', 404);
-
-  var lastRow = sheet.getLastRow();
-  if (lastRow < FIRST_DATA_ROW) return jsonOk({ values: [] });
+  var sheet = ss.getSheetByName(SHEET_STORICO);
+  if (!sheet) return jsonError('Foglio "' + SHEET_STORICO + '" non trovato', 404);
 
   var tz = ss.getSpreadsheetTimeZone();
+  var corrente = Utilities.formatDate(new Date(), tz, 'MM-yyyy');
+  if (!/^(0[1-9]|1[0-2])-\d{4}$/.test(meseAnno || '')) meseAnno = corrente;
+  var mesi = elencoMesi_(PRIMO_MESE_LETTURA, corrente);
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < FIRST_DATA_ROW) return jsonOk({ values: [], meseAnno: meseAnno, mesi: mesi });
+
   var values = sheet.getRange(FIRST_DATA_ROW, 1, lastRow - FIRST_DATA_ROW + 1, N_COL).getValues();
 
-  // Filtra solo per email (col F = 5): SPESE contiene già il mese corrente.
+  // Filtra per email (col F = 5) e mese di inserimento (col B = 1)
   var filtered = values.filter(function(r) {
     if (r[0] === '' || r[0] === null) return false;
-    return (r[5] || '').toString().toLowerCase().trim() === email;
+    if ((r[5] || '').toString().toLowerCase().trim() !== email) return false;
+    return meseInserimento_(r[1], tz) === meseAnno;
   });
 
   // Converti Date/valori in stringhe (coerenza con l'HTML), col fuso del foglio
@@ -190,7 +201,7 @@ function handleRead(email, meseAnno) {
     });
   });
 
-  return jsonOk({ values: filtered });
+  return jsonOk({ values: filtered, meseAnno: meseAnno, mesi: mesi });
 }
 
 // ================================================================
@@ -428,6 +439,25 @@ function monthFromCell_(v) {
   if (v instanceof Date) return ('0' + (v.getMonth() + 1)).slice(-2) + '-' + v.getFullYear();
   var m = (v || '').toString().match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? (m[2] + '-' + m[1]) : '';
+}
+
+// "MM-YYYY" dalla "Data inserimento" (Date oppure stringa ISO in UTC), nel fuso tz
+function meseInserimento_(v, tz) {
+  var d = (v instanceof Date) ? v : new Date((v || '').toString());
+  return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, tz, 'MM-yyyy');
+}
+
+// Elenco "MM-YYYY" da primo a ultimo compresi, dal più recente
+function elencoMesi_(primo, ultimo) {
+  var p = primo.split('-'), u = ultimo.split('-');
+  var m = parseInt(u[0], 10), y = parseInt(u[1], 10);
+  var stop = parseInt(p[1], 10) * 12 + parseInt(p[0], 10);
+  var out = [];
+  while (y * 12 + m >= stop) {
+    out.push(('0' + m).slice(-2) + '-' + y);
+    if (--m === 0) { m = 12; y--; }
+  }
+  return out;
 }
 
 // "Luglio 2026" da "07-2026"

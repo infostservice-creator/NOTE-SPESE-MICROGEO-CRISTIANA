@@ -664,11 +664,11 @@
       <!-- Riepilogo numerico -->
       <div class="summary-grid">
         <div class="summary-card">
-          <div class="summary-label">Totale complessivo</div>
+          <div class="summary-label">Totale (escl. rifiutate)</div>
           <div class="summary-value" id="total-mese">—</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">N. spese totali</div>
+          <div class="summary-label">N. spese</div>
           <div class="summary-value" id="count-spese">—</div>
         </div>
         <div class="summary-card">
@@ -682,7 +682,9 @@
       </div>
 
       <div class="section-header">
-        <h3 id="month-title">—</h3>
+        <select id="f-mese" class="form-control" aria-label="Mese"
+                style="width:auto; padding-top:8px; padding-bottom:8px; font-weight:600;"
+                onchange="loadMyExpenses(this.value)"></select>
         <button class="btn-refresh" onclick="loadMyExpenses()">🔄 Aggiorna</button>
       </div>
 
@@ -727,6 +729,10 @@ const CONFIG = {
   // URL dell'Apps Script dopo il deploy (Esegui come: Me — Chi può accedere: Chiunque)
   SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzRfIFKR6fAVFgCnESAQEi8E0ufyIB4ABmii-jNhn5tzZ6vJB2vEiiB8hzZ4XJM0IERiA/exec',
 };
+
+// Pulsante "Modifica" in "Le mie spese": da attivare nel rilascio 2,
+// insieme all'azione 'update' nel backend (oggi non è attiva).
+const MODIFICA_ATTIVA = false;
 
 // ================================================================
 //  LISTA AGENTI AUTORIZZATI
@@ -901,6 +907,7 @@ function enterApp() {
 function doLogout() {
   try { google.accounts.id.disableAutoSelect(); } catch (_) {}
   APP = { user: null, agent: null, submitting: false };
+  document.getElementById('f-mese').innerHTML = '';
   resetForm();
   switchTab('nuova');
   showScreen('login');
@@ -1231,24 +1238,34 @@ async function submitExpense() {
 }
 
 // ================================================================
-//  CARICA TUTTE LE MIE SPESE (storico completo, non solo mese corrente)
+//  CARICA LE MIE SPESE DI UN MESE (dallo STORICO ANNUALE, per data di inserimento)
+//  Senza meseAnno usa il mese selezionato nel menu; al primo caricamento
+//  il backend restituisce il mese corrente e l'elenco dei mesi.
 // ================================================================
-async function loadMyExpenses() {
+let readSeq = 0; // ignora le risposte di richieste superate da una più recente
+
+async function loadMyExpenses(meseAnno) {
   if (!APP.user) return;
 
-  document.getElementById('month-title').textContent = 'Storico completo';
+  const selEl = document.getElementById('f-mese');
+  const richiesto = meseAnno || selEl.value;
+  const seq = ++readSeq;
 
   const listEl = document.getElementById('expenses-list');
   listEl.innerHTML = `<div class="empty-state"><div class="es-icon">⏳</div><p>Caricamento...</p></div>`;
+  selEl.disabled = true;
 
   try {
-    const data = await apiPost('read', {});
+    const data = await apiPost('read', richiesto ? { meseAnno: richiesto } : {});
+    if (seq !== readSeq) return;
+
+    renderMesi(data.mesi || [], data.meseAnno);
 
     if (!data.values || data.values.length === 0) {
       renderEmptyState(); return;
     }
 
-    // Filtra solo per email (col F = indice 5): mostra TUTTE le spese, di tutti i mesi
+    // Filtra per email (col F = indice 5); il backend filtra già email e mese
     const mine = data.values.filter(r =>
       (r[5] || '').toLowerCase() === APP.user.email
     );
@@ -1260,8 +1277,9 @@ async function loadMyExpenses() {
 
     APP.myExpenses = mine; // salvato per permettere la modifica (editExpense)
 
-    // Statistiche
-    const total       = mine.reduce((s, r) => s + (parseFloat(r[9]) || 0), 0);
+    // Statistiche (il totale esclude le RIFIUTATA)
+    const total       = mine.filter(r => r[11] !== 'RIFIUTATA')
+                            .reduce((s, r) => s + (parseFloat(r[9]) || 0), 0);
     const countAuth   = mine.filter(r => r[11] === 'DA AUTORIZZARE').length;
     const countApprv  = mine.filter(r => r[11] === 'APPROVATA').length;
 
@@ -1273,6 +1291,7 @@ async function loadMyExpenses() {
     listEl.innerHTML = mine.map(renderExpenseCard).join('');
 
   } catch (err) {
+    if (seq !== readSeq) return;
     console.error('[loadMyExpenses]', err);
     listEl.innerHTML = `
       <div class="alert alert-danger">
@@ -1284,7 +1303,18 @@ async function loadMyExpenses() {
           </button>
         </div>
       </div>`;
+  } finally {
+    if (seq === readSeq) selEl.disabled = false;
   }
+}
+
+// Riempie il menu mesi ("MM-YYYY", dal più recente) e seleziona il mese restituito dal backend
+function renderMesi(mesi, selezionato) {
+  const selEl = document.getElementById('f-mese');
+  if (selezionato && mesi.indexOf(selezionato) === -1) mesi = [selezionato, ...mesi];
+  selEl.innerHTML = mesi.map(m =>
+    `<option value="${m}"${m === selezionato ? ' selected' : ''}>${nomeMese(m)}</option>`
+  ).join('');
 }
 
 // ================================================================
@@ -1310,7 +1340,7 @@ function renderExpenseCard(row) {
     'RIFIUTATA':      { card: 's-rifiutata',      badge: 'b-rifiutata',     label: '❌ RIFIUTATA' },
   };
   const k = keyMap[stato] || keyMap['IN ATTESA'];
-  const canEdit = stato === 'IN ATTESA';
+  const canEdit = MODIFICA_ATTIVA && stato === 'IN ATTESA';
 
   return `
     <div class="expense-card ${k.card}">
@@ -1376,7 +1406,7 @@ function renderEmptyState() {
   document.getElementById('expenses-list').innerHTML   = `
     <div class="empty-state">
       <div class="es-icon">📭</div>
-      <p>Nessuna spesa inserita finora.<br>
+      <p>Nessuna spesa inserita in questo mese.<br>
          Usa il tab <strong>Nuova spesa</strong> per aggiungere la prima.</p>
     </div>`;
 }
@@ -1445,6 +1475,15 @@ function getMeseAnno() {
 function getMeseNome() {
   return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
           'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'][new Date().getMonth()];
+}
+
+// "Ottobre 2026" da "10-2026"
+function nomeMese(meseAnno) {
+  const nomi = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+  const [m, y] = (meseAnno || '').split('-');
+  const i = parseInt(m, 10);
+  return (i >= 1 && i <= 12) ? `${nomi[i - 1]} ${y}` : meseAnno;
 }
 
 // "MM-YYYY" da una data "yyyy-MM-dd" (per filtrare per mese la Data spesa)
